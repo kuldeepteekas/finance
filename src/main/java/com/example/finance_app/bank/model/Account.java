@@ -28,6 +28,10 @@ public class Account {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    // Optional display name — helps users distinguish accounts with the same currency
+    @Column(length = 100)
+    private String accountName;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 10)
     private Currency currency;
