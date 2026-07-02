@@ -75,38 +75,61 @@ Non-goals (for now):
 
 ## 4. Data Model
 
-### 4.1 users
+### 4.1 currencies ← new reference table
 
 ```
-users
-├── id              UUID (PK)
-├── username        VARCHAR(100) UNIQUE NOT NULL
-├── password        VARCHAR(255) NOT NULL   -- BCrypt hashed
-├── full_name       VARCHAR(255)
-├── created_at      TIMESTAMP NOT NULL
-└── updated_at      TIMESTAMP NOT NULL
+currencies
+├── code        VARCHAR(10) (PK)    -- 'EUR', 'USD', 'SEK', 'GBP', 'VND', ...
+├── name        VARCHAR(100) NOT NULL
+├── is_active   BOOLEAN NOT NULL DEFAULT TRUE
+└── created_at  TIMESTAMP NOT NULL
 ```
 
-> Pre-seeded via Flyway migration. No registration API for now.
-> Password stored as BCrypt hash (Spring Security default).
+> Central reference table for all supported currencies.
+> `accounts`, `transactions`, and `exchange_rates` all FK into this table.
+> To add a new currency: INSERT a row here + add value to the Java `Currency` enum.
+> No ALTER TABLE or CHECK constraint changes needed anywhere else.
+> `is_active = FALSE` retains historical records while preventing new usage.
+
+> **Why not CHECK constraints?**
+> A CHECK like `currency IN ('EUR','USD',...)` requires an ALTER TABLE migration
+> in every table that uses it every time a currency is added. FK to a reference
+> table means one INSERT and one enum value change — nothing else.
 
 ---
 
-### 4.2 accounts
+### 4.2 users
+
+```
+users
+├── id          UUID (PK)          -- implicit unique index from PK
+├── username    VARCHAR(100) UNIQUE NOT NULL  -- implicit unique index from UNIQUE constraint
+├── password    VARCHAR(255) NOT NULL         -- BCrypt hashed
+├── full_name   VARCHAR(255)
+├── created_at  TIMESTAMP NOT NULL
+└── updated_at  TIMESTAMP NOT NULL
+```
+
+> Pre-seeded via Flyway migration. No registration API for now.
+> Lookups by `id` and `username` are already indexed via PK and UNIQUE constraints respectively.
+> No extra explicit indexes needed on this table.
+
+---
+
+### 4.3 accounts
 
 ```
 accounts
-├── id              UUID (PK)
-├── user_id         UUID FK → users.id NOT NULL
-├── currency        VARCHAR(3) NOT NULL       -- EUR, USD, SEK, GBP, VND
-├── balance         NUMERIC(19,4) NOT NULL DEFAULT 0
-├── status          VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'  -- ACTIVE, CLOSED, BLOCKED, INACTIVE
-├── created_at      TIMESTAMP NOT NULL
-└── updated_at      TIMESTAMP NOT NULL
+├── id          UUID (PK)
+├── user_id     UUID FK → users.id NOT NULL
+├── currency    VARCHAR(10) FK → currencies.code NOT NULL
+├── balance     NUMERIC(19,4) NOT NULL DEFAULT 0
+├── status      VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'  -- ACTIVE, CLOSED, BLOCKED, INACTIVE
+├── created_at  TIMESTAMP NOT NULL
+└── updated_at  TIMESTAMP NOT NULL
 
-Constraints:
-- balance >= 0  (CHECK constraint at DB level)
-- currency IN ('EUR','USD','SEK','GBP','VND')
+CHECK constraints (stable business rules only):
+- balance >= 0
 - status IN ('ACTIVE','CLOSED','BLOCKED','INACTIVE')
 
 Indexes:
@@ -114,70 +137,78 @@ Indexes:
 ```
 
 > One account = one currency. A user CAN have multiple accounts with the same currency.
-> Balance can never go negative (enforced at DB + service layer).
-> Status field is present for model completeness (future states: CLOSED, BLOCKED, INACTIVE).
-> Business logic for status transitions (closing, blocking) is out of scope for this version.
-> All accounts are created with status=ACTIVE. No status-change endpoint implemented yet.
+> Balance can never go negative (enforced at DB CHECK + service layer).
+> Status field present for model completeness; transition logic is out of scope for v1.
 
 ---
 
-### 4.3 transactions
+### 4.4 transactions
 
 ```
 transactions
-├── id                UUID (PK)
-├── account_id        UUID FK → accounts.id NOT NULL
-├── user_id           UUID FK → users.id NOT NULL
-├── type              VARCHAR(20) NOT NULL     -- DEPOSIT, WITHDRAWAL, EXCHANGE_OUT, EXCHANGE_IN
-├── amount            NUMERIC(19,4) NOT NULL
-├── currency          VARCHAR(3) NOT NULL
-├── balance_before    NUMERIC(19,4) NOT NULL
-├── balance_after     NUMERIC(19,4) NOT NULL
-├── status            VARCHAR(20) NOT NULL     -- PENDING, SUCCESS, FAILED
-├── description       VARCHAR(500)
-├── failure_reason    VARCHAR(500)
-├── correlation_id    UUID NOT NULL            -- groups related transactions (e.g. exchange pair)
-├── idempotency_key   VARCHAR(255)             -- dedup key from client
-├── external_call_status VARCHAR(20)           -- SUCCESS, FAILED, SKIPPED (only for WITHDRAWAL)
-├── created_at        TIMESTAMP NOT NULL
-└── updated_at        TIMESTAMP NOT NULL
+├── id                   UUID (PK)
+├── account_id           UUID FK → accounts.id NOT NULL
+├── user_id              UUID FK → users.id NOT NULL
+├── type                 VARCHAR(20) NOT NULL     -- DEPOSIT, WITHDRAWAL, EXCHANGE_OUT, EXCHANGE_IN
+├── amount               NUMERIC(19,4) NOT NULL
+├── currency             VARCHAR(10) FK → currencies.code NOT NULL
+├── balance_before       NUMERIC(19,4) NOT NULL
+├── balance_after        NUMERIC(19,4) NOT NULL
+├── status               VARCHAR(20) NOT NULL     -- SUCCESS, FAILED
+├── description          VARCHAR(500)
+├── failure_reason       VARCHAR(500)
+├── correlation_id       UUID NOT NULL            -- groups related transactions (e.g. exchange pair)
+├── idempotency_key      VARCHAR(255)
+├── external_call_status VARCHAR(20)              -- SUCCESS, FAILED, SKIPPED (WITHDRAWAL only)
+├── created_at           TIMESTAMP NOT NULL
+└── updated_at           TIMESTAMP NOT NULL
+
+CHECK constraints (stable business rules only):
+- type IN ('DEPOSIT','WITHDRAWAL','EXCHANGE_OUT','EXCHANGE_IN')
+- status IN ('SUCCESS','FAILED')
+- external_call_status IS NULL OR IN ('SUCCESS','FAILED','SKIPPED')
 
 Indexes:
 - idx_transactions_account_id ON transactions(account_id)
 - idx_transactions_correlation_id ON transactions(correlation_id)
-- idx_transactions_idempotency_key ON transactions(idempotency_key)
-- idx_transactions_created_at ON transactions(created_at DESC)   -- for pagination
+- idx_transactions_idempotency ON transactions(idempotency_key)
+- idx_transactions_created_at ON transactions(created_at DESC)   -- cursor-based pagination
 ```
 
-> Every exchange creates TWO transaction records (EXCHANGE_OUT + EXCHANGE_IN) sharing the same correlation_id.
-> Failed transactions ARE persisted (audit trail).
+> Every exchange creates TWO records (EXCHANGE_OUT + EXCHANGE_IN) sharing the same correlation_id.
+> Failed transactions ARE persisted (full audit trail).
 
 ---
 
-### 4.4 exchange_rates
+### 4.5 exchange_rates
 
 ```
 exchange_rates
 ├── id              UUID (PK)
-├── from_currency   VARCHAR(3) NOT NULL
-├── to_currency     VARCHAR(3) NOT NULL
+├── from_currency   VARCHAR(10) FK → currencies.code NOT NULL
+├── to_currency     VARCHAR(10) FK → currencies.code NOT NULL
 ├── rate            NUMERIC(19,6) NOT NULL    -- multiply from_amount by rate to get to_amount
 ├── effective_from  TIMESTAMP NOT NULL
 ├── created_at      TIMESTAMP NOT NULL
 
 Unique constraint: (from_currency, to_currency, effective_from)
 
+CHECK constraints (stable business rules only):
+- from_currency <> to_currency
+- rate > 0
+
 Indexes:
 - idx_exchange_rates_pair ON exchange_rates(from_currency, to_currency, effective_from DESC)
 ```
 
-> Seeded via Flyway with initial rates for all currency pairs.
-> Service always uses the latest rate (MAX effective_from) for a given pair.
+> Seeded via Flyway with initial rates for all 20 currency pairs (5 currencies × 4 directions).
+> Service always uses the latest rate (highest effective_from) for a given pair.
 > Rate history is kept (never deleted) for audit.
+> To add rates for a new currency: INSERT rows for all new pairs in a new migration.
 
 ---
 
-### 4.5 idempotency_keys
+### 4.6 idempotency_keys
 
 ```
 idempotency_keys
@@ -606,6 +637,8 @@ com.financeapp
 | Transaction write strategy | Option B — write once as SUCCESS or FAILED, no PENDING | Simpler; PENDING + cleanup job deferred to future version |
 | Account status field | Present in model (ACTIVE/CLOSED/BLOCKED/INACTIVE) | Future-proof; no status-transition business logic in this version |
 | Multiple accounts same currency | Allowed | No unique constraint on (user_id, currency) |
+| Currency validation | FK → currencies table (not CHECK constraint) | CHECK requires ALTER TABLE in every table per new currency; FK requires one INSERT |
+| users index | No extra indexes | PK and UNIQUE constraint already create implicit indexes on id and username |
 | Pagination | Cursor-based (not offset) | Stable under concurrent writes; better for infinite scroll |
 | Balance precision | NUMERIC(19,4) | 4 decimal places covers all 5 currencies; no float rounding issues |
 | Transaction isolation | REPEATABLE READ | Prevents phantom reads during balance checks |
