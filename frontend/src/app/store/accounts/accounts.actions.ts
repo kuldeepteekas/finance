@@ -27,3 +27,18 @@ export const loadAccountFailure = createAction(
   '[Accounts] Load Account Failure',
   props<{ error: string }>()
 );
+
+export const createAccount = createAction(
+  '[Accounts] Create Account',
+  props<{ accountName: string; currency: string }>()
+);
+
+export const createAccountSuccess = createAction(
+  '[Accounts] Create Account Success',
+  props<{ account: AccountResponse }>()
+);
+
+export const createAccountFailure = createAction(
+  '[Accounts] Create Account Failure',
+  props<{ error: string }>()
+);

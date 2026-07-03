@@ -2,10 +2,20 @@
 
 <div class="page-container home-page">
   <div class="home-header">
-    <h1 class="home-header__title">
-      <span class="gradient-text">My Accounts</span>
-    </h1>
-    <p class="home-header__subtitle">Manage and monitor all your accounts</p>
+    <div class="home-header__left">
+      <h1 class="home-header__title">
+        <span class="gradient-text">My Accounts</span>
+      </h1>
+      <p class="home-header__subtitle">Manage and monitor all your accounts</p>
+    </div>
+    <button class="btn-primary" (click)="openCreateModal()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+        stroke-linecap="round" stroke-linejoin="round">
+        <line x1="12" y1="5" x2="12" y2="19"/>
+        <line x1="5" y1="12" x2="19" y2="12"/>
+      </svg>
+      New Account
+    </button>
   </div>
 
   @if (loading()) {
@@ -27,8 +37,8 @@
   } @else if (accounts().length === 0) {
     <div class="empty-state card">
       <div class="empty-state__icon">&#128179;</div>
-      <h3 class="empty-state__title">No accounts found</h3>
-      <p class="empty-state__text">You don't have any accounts yet.</p>
+      <h3 class="empty-state__title">No accounts yet</h3>
+      <p class="empty-state__text">Click "New Account" to create your first account.</p>
     </div>
   } @else {
     <div class="accounts-grid">
@@ -55,3 +65,61 @@
     </div>
   }
 </div>
+
+<!-- Create Account Modal -->
+@if (showCreateModal()) {
+  <div class="modal-overlay" (click)="closeCreateModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        <h2 class="modal__title">Create New Account</h2>
+        <button class="modal__close" (click)="closeCreateModal()" aria-label="Close">&times;</button>
+      </div>
+      <div class="modal__body">
+        <div class="form-field">
+          <label for="accountName">Account Name</label>
+          <input
+            id="accountName"
+            type="text"
+            placeholder="e.g. My Euro Savings"
+            [value]="newAccountName()"
+            (input)="newAccountName.set($any($event.target).value)"
+            [disabled]="creating()"
+            (keydown.enter)="submitCreateAccount()"
+          />
+        </div>
+
+        <div class="form-field">
+          <label for="currency">Currency</label>
+          <select
+            id="currency"
+            [value]="newAccountCurrency()"
+            (change)="newAccountCurrency.set($any($event.target).value)"
+            [disabled]="creating()"
+          >
+            @for (c of currencies; track c) {
+              <option [value]="c">{{ c }}</option>
+            }
+          </select>
+        </div>
+
+        @if (createError()) {
+          <div class="modal-error">{{ createError() }}</div>
+        }
+
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="closeCreateModal()" [disabled]="creating()">
+            Cancel
+          </button>
+          <button class="btn-primary" (click)="submitCreateAccount()" [disabled]="creating()">
+            @if (creating()) {
+              <span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>
+              Creating...
+            } @else {
+              Create Account
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

@@ -70,6 +70,11 @@ public class Transaction {
     @Column(length = 255)
     private String idempotencyKey;
 
+    // Tracks the other side of an internal transfer (EXCHANGE_OUT ↔ EXCHANGE_IN).
+    // NULL for DEPOSIT and WITHDRAWAL (no internal counterparty).
+    @Column(name = "counterparty_account_id")
+    private UUID counterpartyAccountId;
+
     // Only populated for WITHDRAWAL and EXCHANGE_OUT (where external audit call is made)
     @Enumerated(EnumType.STRING)
     @Column(length = 20)

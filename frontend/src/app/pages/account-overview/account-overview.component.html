@@ -34,6 +34,38 @@
         <div class="account-header__id">ID: {{ account()!.id }}</div>
       </div>
     </div>
+
+    <!-- Action Buttons -->
+    <div class="action-bar">
+      <button class="action-btn action-btn--deposit" (click)="openModal('deposit')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="5" x2="12" y2="19"/>
+          <polyline points="19 12 12 19 5 12"/>
+        </svg>
+        Deposit
+      </button>
+      <button class="action-btn action-btn--withdraw" (click)="openModal('withdraw')">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <line x1="12" y1="19" x2="12" y2="5"/>
+          <polyline points="5 12 12 5 19 12"/>
+        </svg>
+        Withdraw
+      </button>
+      <button class="action-btn action-btn--transfer" (click)="openModal('transfer')"
+        [disabled]="otherAccounts().length === 0"
+        [title]="otherAccounts().length === 0 ? 'You need at least one other account to transfer' : ''">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="17 1 21 5 17 9"/>
+          <path d="M3 11V9a4 4 0 0 1 4-4h14"/>
+          <polyline points="7 23 3 19 7 15"/>
+          <path d="M21 13v2a4 4 0 0 1-4 4H3"/>
+        </svg>
+        Transfer
+      </button>
+    </div>
   }
 
   <!-- Balance Chart -->
@@ -92,7 +124,6 @@
         }
       </div>
 
-      <!-- Loading More Spinner -->
       @if (loadingMore()) {
         <div class="loading-more">
           <span class="spinner"></span>
@@ -100,8 +131,96 @@
         </div>
       }
 
-      <!-- Infinite Scroll Sentinel -->
       <div #sentinel class="sentinel"></div>
     }
   </div>
 </div>
+
+<!-- Deposit / Withdraw / Transfer Modal -->
+@if (activeModal()) {
+  <div class="modal-overlay" (click)="closeModal()">
+    <div class="modal" (click)="$event.stopPropagation()">
+      <div class="modal__header">
+        @if (activeModal() === 'deposit') {
+          <h2 class="modal__title">Deposit Funds</h2>
+        } @else if (activeModal() === 'withdraw') {
+          <h2 class="modal__title">Withdraw Funds</h2>
+        } @else {
+          <h2 class="modal__title">Transfer Funds</h2>
+        }
+        <button class="modal__close" (click)="closeModal()" aria-label="Close">&times;</button>
+      </div>
+
+      <div class="modal__body">
+        @if (account()) {
+          <div class="modal-account-info">
+            <span class="modal-account-info__label">From account</span>
+            <span class="modal-account-info__value">{{ account()!.accountName }} &mdash; {{ formatBalance(account()!.balance, account()!.currency) }}</span>
+          </div>
+        }
+
+        <div class="form-field">
+          <label for="modalAmount">Amount ({{ account()?.currency }})</label>
+          <input
+            id="modalAmount"
+            type="number"
+            min="0.01"
+            step="0.01"
+            placeholder="0.00"
+            [value]="modalAmount()"
+            (input)="modalAmount.set($any($event.target).value)"
+            [disabled]="modalLoading()"
+            (keydown.enter)="submitModal()"
+          />
+        </div>
+
+        @if (activeModal() === 'transfer') {
+          <div class="form-field">
+            <label for="targetAccount">Target Account</label>
+            <select
+              id="targetAccount"
+              [value]="modalTargetAccountId()"
+              (change)="modalTargetAccountId.set($any($event.target).value)"
+              [disabled]="modalLoading()"
+            >
+              @for (acc of otherAccounts(); track acc.id) {
+                <option [value]="acc.id">{{ acc.accountName }} ({{ acc.currency }})</option>
+              }
+            </select>
+          </div>
+        }
+
+        @if (modalError()) {
+          <div class="modal-error">{{ modalError() }}</div>
+        }
+
+        @if (modalSuccess()) {
+          <div class="modal-success">{{ modalSuccess() }}</div>
+        }
+
+        <div class="modal-actions">
+          <button class="btn-secondary" (click)="closeModal()" [disabled]="modalLoading()">
+            Cancel
+          </button>
+          <button
+            class="btn-primary"
+            [class.btn-danger]="activeModal() === 'withdraw'"
+            (click)="submitModal()"
+            [disabled]="modalLoading()"
+          >
+            @if (modalLoading()) {
+              <span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>
+              Processing...
+            } @else if (activeModal() === 'deposit') {
+              Deposit
+            } @else if (activeModal() === 'withdraw') {
+              Withdraw
+            } @else {
+              Transfer
+            }
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+}

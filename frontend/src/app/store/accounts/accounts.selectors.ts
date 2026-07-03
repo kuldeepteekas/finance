@@ -18,6 +18,11 @@ export const selectAccountsLoading = createSelector(
   (state) => state.loading
 );
 
+export const selectAccountsCreating = createSelector(
+  selectAccountsState,
+  (state) => state.creating
+);
+
 export const selectAccountsError = createSelector(
   selectAccountsState,
   (state) => state.error

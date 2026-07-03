@@ -1,32 +1,84 @@
-import { Component, OnInit, inject } from '@angular/core';
+import { Component, OnInit, inject, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { toSignal } from '@angular/core/rxjs-interop';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
-import { loadAccounts } from '../../store/accounts/accounts.actions';
-import { selectAllAccounts, selectAccountsLoading, selectAccountsError } from '../../store/accounts/accounts.selectors';
+import { loadAccounts, createAccount } from '../../store/accounts/accounts.actions';
+import {
+  selectAllAccounts,
+  selectAccountsLoading,
+  selectAccountsCreating,
+  selectAccountsError
+} from '../../store/accounts/accounts.selectors';
 import { AccountResponse } from '../../core/models/account.model';
+import { Actions, ofType } from '@ngrx/effects';
+import { createAccountSuccess, createAccountFailure } from '../../store/accounts/accounts.actions';
+import { take } from 'rxjs/operators';
+
+const SUPPORTED_CURRENCIES = ['EUR', 'USD', 'SEK', 'GBP', 'VND'] as const;
 
 @Component({
   selector: 'app-home',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './home.component.html',
   styleUrl: './home.component.scss'
 })
 export class HomeComponent implements OnInit {
   private readonly store = inject(Store);
   private readonly router = inject(Router);
+  private readonly actions$ = inject(Actions);
 
   readonly accounts = toSignal(this.store.select(selectAllAccounts), { initialValue: [] });
   readonly loading = toSignal(this.store.select(selectAccountsLoading), { initialValue: false });
+  readonly creating = toSignal(this.store.select(selectAccountsCreating), { initialValue: false });
   readonly error = toSignal(this.store.select(selectAccountsError), { initialValue: null });
 
   readonly skeletonItems = Array(6).fill(0);
+  readonly currencies = SUPPORTED_CURRENCIES;
+
+  // Modal state
+  showCreateModal = signal(false);
+  newAccountName = signal('');
+  newAccountCurrency = signal<string>('EUR');
+  createError = signal<string | null>(null);
 
   ngOnInit(): void {
     this.store.dispatch(loadAccounts());
+  }
+
+  openCreateModal(): void {
+    this.newAccountName.set('');
+    this.newAccountCurrency.set('EUR');
+    this.createError.set(null);
+    this.showCreateModal.set(true);
+  }
+
+  closeCreateModal(): void {
+    this.showCreateModal.set(false);
+  }
+
+  submitCreateAccount(): void {
+    const name = this.newAccountName().trim();
+    if (!name) {
+      this.createError.set('Account name is required.');
+      return;
+    }
+    this.createError.set(null);
+    this.store.dispatch(createAccount({ accountName: name, currency: this.newAccountCurrency() }));
+
+    this.actions$.pipe(
+      ofType(createAccountSuccess, createAccountFailure),
+      take(1)
+    ).subscribe((action) => {
+      if (action.type === createAccountSuccess.type) {
+        this.closeCreateModal();
+      } else {
+        this.createError.set((action as { error: string }).error);
+      }
+    });
   }
 
   navigateToAccount(account: AccountResponse): void {

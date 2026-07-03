@@ -198,6 +198,7 @@ public class MoneyTransactionService {
                 .description(description)
                 .correlationId(correlationId)
                 .idempotencyKey(idempotencyKey)
+                .counterpartyAccountId(toAccount.getId())   // money went TO this account
                 .externalCallStatus(externalCallStatus) // external call done for EXCHANGE_OUT
                 .build();
 
@@ -213,6 +214,7 @@ public class MoneyTransactionService {
                 .description(description)
                 .correlationId(correlationId)
                 .idempotencyKey(idempotencyKey)
+                .counterpartyAccountId(fromAccount.getId()) // money came FROM this account
                 .externalCallStatus(ExternalCallStatus.SKIPPED) // EXCHANGE_IN never does the external call
                 .build();
 
@@ -290,6 +292,7 @@ public class MoneyTransactionService {
                 .description(tx.getDescription())
                 .failureReason(tx.getFailureReason())
                 .correlationId(tx.getCorrelationId())
+                .counterpartyAccountId(tx.getCounterpartyAccountId())
                 .idempotencyKey(tx.getIdempotencyKey())
                 .externalCallStatus(tx.getExternalCallStatus())
                 .createdAt(tx.getCreatedAt())

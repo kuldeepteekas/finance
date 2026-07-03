@@ -19,6 +19,7 @@ export interface TransactionResponse {
   description: string | null;
   failureReason: string | null;
   correlationId: string;
+  counterpartyAccountId: string | null;
   idempotencyKey: string;
   externalCallStatus: 'SUCCESS' | 'FAILED' | 'SKIPPED';
   createdAt: string;

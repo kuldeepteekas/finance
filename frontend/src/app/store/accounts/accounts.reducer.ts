@@ -6,13 +6,17 @@ import {
   loadAccountsFailure,
   loadAccount,
   loadAccountSuccess,
-  loadAccountFailure
+  loadAccountFailure,
+  createAccount,
+  createAccountSuccess,
+  createAccountFailure
 } from './accounts.actions';
 
 export interface AccountsState {
   accounts: AccountResponse[];
   selectedAccount: AccountResponse | null;
   loading: boolean;
+  creating: boolean;
   error: string | null;
 }
 
@@ -20,6 +24,7 @@ export const initialAccountsState: AccountsState = {
   accounts: [],
   selectedAccount: null,
   loading: false,
+  creating: false,
   error: null
 };
 
@@ -61,6 +66,25 @@ export const accountsReducer = createReducer(
   on(loadAccountFailure, (state, { error }) => ({
     ...state,
     loading: false,
+    error
+  })),
+
+  on(createAccount, (state) => ({
+    ...state,
+    creating: true,
+    error: null
+  })),
+
+  on(createAccountSuccess, (state, { account }) => ({
+    ...state,
+    accounts: [...state.accounts, account],
+    creating: false,
+    error: null
+  })),
+
+  on(createAccountFailure, (state, { error }) => ({
+    ...state,
+    creating: false,
     error
   }))
 );

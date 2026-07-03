@@ -9,7 +9,10 @@ import {
   loadAccountsFailure,
   loadAccount,
   loadAccountSuccess,
-  loadAccountFailure
+  loadAccountFailure,
+  createAccount,
+  createAccountSuccess,
+  createAccountFailure
 } from './accounts.actions';
 
 export class AccountsEffects {
@@ -39,6 +42,25 @@ export class AccountsEffects {
           catchError((error) =>
             of(loadAccountFailure({ error: error?.message || 'Failed to load account' }))
           )
+        )
+      )
+    )
+  );
+
+  createAccount$ = createEffect(() =>
+    this.actions$.pipe(
+      ofType(createAccount),
+      switchMap(({ accountName, currency }) =>
+        this.accountApiService.createAccount(accountName, currency).pipe(
+          map((account) => createAccountSuccess({ account })),
+          catchError((error) => {
+            const msg =
+              error?.error?.message ||
+              error?.error?.error ||
+              error?.message ||
+              'Failed to create account';
+            return of(createAccountFailure({ error: msg }));
+          })
         )
       )
     )

@@ -33,7 +33,7 @@
     display: flex;
     align-items: center;
     justify-content: center;
-    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.35);
+    box-shadow: 0 6px 20px rgba(255, 107, 53, 0.3);
     letter-spacing: 0.5px;
     flex-shrink: 0;
   }
@@ -70,6 +70,72 @@
   }
 }
 
+/* ── Action Bar ──────────────────────────────────────────── */
+.action-bar {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.action-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 22px;
+  border-radius: var(--radius-sm);
+  font-size: 0.95rem;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition), box-shadow var(--transition), opacity var(--transition);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
+
+  &:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+  }
+
+  &--deposit {
+    background: var(--gradient);
+    color: #fff;
+    box-shadow: 0 4px 14px rgba(255, 107, 53, 0.3);
+
+    &:hover:not(:disabled) {
+      box-shadow: 0 6px 20px rgba(255, 107, 53, 0.45);
+    }
+  }
+
+  &--withdraw {
+    background: rgba(198, 40, 40, 0.08);
+    color: var(--danger);
+    border: 1.5px solid rgba(198, 40, 40, 0.25);
+
+    &:hover:not(:disabled) {
+      background: rgba(198, 40, 40, 0.14);
+      border-color: rgba(198, 40, 40, 0.4);
+    }
+  }
+
+  &--transfer {
+    background: rgba(21, 101, 192, 0.08);
+    color: var(--info);
+    border: 1.5px solid rgba(21, 101, 192, 0.25);
+
+    &:hover:not(:disabled) {
+      background: rgba(21, 101, 192, 0.14);
+      border-color: rgba(21, 101, 192, 0.4);
+    }
+  }
+}
+
+/* ── Chart ───────────────────────────────────────────────── */
 .section-title {
   font-size: 1.1rem;
   font-weight: 700;
@@ -98,6 +164,7 @@
   font-size: 0.9rem;
 }
 
+/* ── Transactions ─────────────────────────────────────────── */
 .transactions-section {
   display: flex;
   flex-direction: column;
@@ -129,7 +196,7 @@
   }
 
   &:hover {
-    background: rgba(255, 107, 53, 0.05);
+    background: rgba(255, 107, 53, 0.04);
   }
 
   &:focus {
@@ -215,5 +282,30 @@
   &__text {
     color: var(--text-muted);
     font-size: 0.875rem;
+  }
+}
+
+/* ── Modal extras ─────────────────────────────────────────── */
+.modal-account-info {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 12px 14px;
+  background: var(--bg);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+
+  &__label {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+  }
+
+  &__value {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--text);
   }
 }

@@ -4,6 +4,7 @@ import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   AccountResponse,
+  TransactionResponse,
   TransactionPageResponse,
   ExchangeRateResponse
 } from '../models/account.model';
@@ -21,6 +22,10 @@ export class AccountApiService {
 
   getAccount(id: string): Observable<AccountResponse> {
     return this.http.get<AccountResponse>(`${this.baseUrl}/accounts/${id}`);
+  }
+
+  createAccount(accountName: string, currency: string): Observable<AccountResponse> {
+    return this.http.post<AccountResponse>(`${this.baseUrl}/accounts`, { accountName, currency });
   }
 
   getTransactions(
@@ -46,6 +51,35 @@ export class AccountApiService {
     return this.http.get<ExchangeRateResponse | ExchangeRateResponse[]>(
       `${this.baseUrl}/exchange-rates`,
       { params }
+    );
+  }
+
+  deposit(accountId: string, amount: number, idempotencyKey: string): Observable<TransactionResponse> {
+    return this.http.post<TransactionResponse>(
+      `${this.baseUrl}/accounts/${accountId}/deposit`,
+      { amount },
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
+  }
+
+  withdraw(accountId: string, amount: number, idempotencyKey: string): Observable<TransactionResponse> {
+    return this.http.post<TransactionResponse>(
+      `${this.baseUrl}/accounts/${accountId}/withdraw`,
+      { amount },
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
+  }
+
+  exchange(
+    accountId: string,
+    targetAccountId: string,
+    amount: number,
+    idempotencyKey: string
+  ): Observable<TransactionResponse> {
+    return this.http.post<TransactionResponse>(
+      `${this.baseUrl}/accounts/${accountId}/exchange`,
+      { toAccountId: targetAccountId, amount },
+      { headers: { 'Idempotency-Key': idempotencyKey } }
     );
   }
 }

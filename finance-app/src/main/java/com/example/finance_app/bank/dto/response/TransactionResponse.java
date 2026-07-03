@@ -29,6 +29,11 @@ public class TransactionResponse {
     // Groups EXCHANGE_OUT + EXCHANGE_IN pair — same correlationId on both records
     private UUID correlationId;
 
+    // The other side of an internal transfer: non-null for EXCHANGE_OUT and EXCHANGE_IN only.
+    // EXCHANGE_OUT → ID of the account that received the funds.
+    // EXCHANGE_IN  → ID of the account that sent the funds.
+    private UUID counterpartyAccountId;
+
     private String idempotencyKey;
 
     // Populated for WITHDRAWAL and EXCHANGE_OUT; SKIPPED for DEPOSIT and EXCHANGE_IN

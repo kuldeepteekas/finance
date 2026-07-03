@@ -6,9 +6,12 @@ import {
   ViewChild,
   ElementRef,
   inject,
-  effect
+  effect,
+  signal,
+  computed
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { Store } from '@ngrx/store';
 import { toSignal } from '@angular/core/rxjs-interop';
@@ -24,9 +27,9 @@ import {
   ChartConfiguration
 } from 'chart.js';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
-import { loadAccount } from '../../store/accounts/accounts.actions';
+import { loadAccount, loadAccounts } from '../../store/accounts/accounts.actions';
 import { loadTransactions, loadMoreTransactions, selectTransaction } from '../../store/transactions/transactions.actions';
-import { selectSelectedAccount, selectAccountsLoading } from '../../store/accounts/accounts.selectors';
+import { selectSelectedAccount, selectAccountsLoading, selectAllAccounts } from '../../store/accounts/accounts.selectors';
 import {
   selectAllTransactions,
   selectHasMore,
@@ -34,14 +37,17 @@ import {
   selectTransactionsLoadingMore,
   selectTransactionCursor
 } from '../../store/transactions/transactions.selectors';
-import { TransactionResponse } from '../../core/models/account.model';
+import { TransactionResponse, AccountResponse } from '../../core/models/account.model';
+import { AccountApiService } from '../../core/services/account-api.service';
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
+
+type ModalType = 'deposit' | 'withdraw' | 'transfer' | null;
 
 @Component({
   selector: 'app-account-overview',
   standalone: true,
-  imports: [CommonModule, NavbarComponent],
+  imports: [CommonModule, FormsModule, NavbarComponent],
   templateUrl: './account-overview.component.html',
   styleUrl: './account-overview.component.scss'
 })
@@ -49,6 +55,7 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   private readonly store = inject(Store);
   private readonly route = inject(ActivatedRoute);
   private readonly router = inject(Router);
+  private readonly accountApi = inject(AccountApiService);
 
   @ViewChild('balanceChart') chartCanvas!: ElementRef<HTMLCanvasElement>;
   @ViewChild('sentinel') sentinel!: ElementRef<HTMLDivElement>;
@@ -59,14 +66,27 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
 
   readonly account = toSignal(this.store.select(selectSelectedAccount), { initialValue: null });
   readonly accountLoading = toSignal(this.store.select(selectAccountsLoading), { initialValue: false });
+  readonly allAccounts = toSignal(this.store.select(selectAllAccounts), { initialValue: [] });
   readonly transactions = toSignal(this.store.select(selectAllTransactions), { initialValue: [] });
   readonly hasMore = toSignal(this.store.select(selectHasMore), { initialValue: false });
   readonly loading = toSignal(this.store.select(selectTransactionsLoading), { initialValue: false });
   readonly loadingMore = toSignal(this.store.select(selectTransactionsLoadingMore), { initialValue: false });
   readonly cursor = toSignal(this.store.select(selectTransactionCursor), { initialValue: null });
 
+  // Other accounts for transfer target dropdown (exclude current)
+  readonly otherAccounts = computed<AccountResponse[]>(() =>
+    this.allAccounts().filter((a) => a.id !== this.accountId)
+  );
+
+  // Modal state
+  activeModal = signal<ModalType>(null);
+  modalAmount = signal('');
+  modalTargetAccountId = signal('');
+  modalLoading = signal(false);
+  modalError = signal<string | null>(null);
+  modalSuccess = signal<string | null>(null);
+
   constructor() {
-    // React to transaction changes to update chart
     effect(() => {
       const txs = this.transactions();
       if (txs.length > 0 && this.chart) {
@@ -78,6 +98,7 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   ngOnInit(): void {
     this.accountId = this.route.snapshot.paramMap.get('id')!;
     this.store.dispatch(loadAccount({ id: this.accountId }));
+    this.store.dispatch(loadAccounts());
     this.store.dispatch(loadTransactions({ accountId: this.accountId }));
   }
 
@@ -91,13 +112,84 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
     this.observer?.disconnect();
   }
 
+  // ── Modal helpers ──────────────────────────────────────────
+
+  openModal(type: ModalType): void {
+    this.activeModal.set(type);
+    this.modalAmount.set('');
+    this.modalTargetAccountId.set(this.otherAccounts()[0]?.id ?? '');
+    this.modalError.set(null);
+    this.modalSuccess.set(null);
+    this.modalLoading.set(false);
+  }
+
+  closeModal(): void {
+    this.activeModal.set(null);
+  }
+
+  submitModal(): void {
+    const amountStr = this.modalAmount().trim();
+    const amount = parseFloat(amountStr);
+    if (!amountStr || isNaN(amount) || amount <= 0) {
+      this.modalError.set('Please enter a valid positive amount.');
+      return;
+    }
+
+    const type = this.activeModal();
+    if (type === 'transfer' && !this.modalTargetAccountId()) {
+      this.modalError.set('Please select a target account.');
+      return;
+    }
+
+    this.modalError.set(null);
+    this.modalLoading.set(true);
+
+    const idempotencyKey = crypto.randomUUID();
+    let call$;
+
+    if (type === 'deposit') {
+      call$ = this.accountApi.deposit(this.accountId, amount, idempotencyKey);
+    } else if (type === 'withdraw') {
+      call$ = this.accountApi.withdraw(this.accountId, amount, idempotencyKey);
+    } else {
+      call$ = this.accountApi.exchange(
+        this.accountId,
+        this.modalTargetAccountId(),
+        amount,
+        idempotencyKey
+      );
+    }
+
+    call$.subscribe({
+      next: () => {
+        this.modalLoading.set(false);
+        this.modalSuccess.set('Transaction completed successfully!');
+        // Refresh account balance + transaction list
+        this.store.dispatch(loadAccount({ id: this.accountId }));
+        this.store.dispatch(loadTransactions({ accountId: this.accountId }));
+        setTimeout(() => this.closeModal(), 1200);
+      },
+      error: (err) => {
+        this.modalLoading.set(false);
+        const msg =
+          err?.error?.message ||
+          err?.error?.error ||
+          err?.message ||
+          'Operation failed. Please try again.';
+        this.modalError.set(msg);
+      }
+    });
+  }
+
+  // ── Chart ──────────────────────────────────────────────────
+
   private initChart(): void {
     if (!this.chartCanvas) return;
     const ctx = this.chartCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
     const gradient = ctx.createLinearGradient(0, 0, 0, 300);
-    gradient.addColorStop(0, 'rgba(255, 107, 53, 0.35)');
+    gradient.addColorStop(0, 'rgba(255, 107, 53, 0.25)');
     gradient.addColorStop(1, 'rgba(255, 107, 53, 0.0)');
 
     const config: ChartConfiguration<'line'> = {
@@ -129,11 +221,11 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
         },
         plugins: {
           tooltip: {
-            backgroundColor: 'rgba(26, 26, 46, 0.95)',
+            backgroundColor: '#FFFFFF',
             borderColor: 'rgba(255, 107, 53, 0.3)',
             borderWidth: 1,
-            titleColor: '#ffffff',
-            bodyColor: 'rgba(255, 255, 255, 0.7)',
+            titleColor: '#1A1A2E',
+            bodyColor: 'rgba(26, 26, 46, 0.7)',
             padding: 12,
             callbacks: {
               label: (context) => {
@@ -147,20 +239,20 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
         scales: {
           x: {
             ticks: {
-              color: 'rgba(255, 255, 255, 0.5)',
+              color: 'rgba(26, 26, 46, 0.5)',
               maxTicksLimit: 8,
               font: { size: 11 }
             },
-            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            grid: { color: 'rgba(0, 0, 0, 0.06)' }
           },
           y: {
             ticks: {
-              color: 'rgba(255, 255, 255, 0.5)',
+              color: 'rgba(26, 26, 46, 0.5)',
               font: { size: 11 },
               callback: (value) =>
                 Number(value).toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })
             },
-            grid: { color: 'rgba(255, 255, 255, 0.05)' }
+            grid: { color: 'rgba(0, 0, 0, 0.06)' }
           }
         }
       }
@@ -202,6 +294,8 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
     );
     this.observer.observe(this.sentinel.nativeElement);
   }
+
+  // ── UI helpers ──────────────────────────────────────────────
 
   onTransactionClick(tx: TransactionResponse): void {
     this.store.dispatch(selectTransaction({ transaction: tx }));

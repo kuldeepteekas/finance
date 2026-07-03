@@ -3,13 +3,23 @@
 }
 
 .home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
   margin-bottom: 32px;
+  gap: 16px;
+  flex-wrap: wrap;
+
+  &__left {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
 
   &__title {
     font-size: 2rem;
     font-weight: 800;
     letter-spacing: -0.5px;
-    margin-bottom: 6px;
   }
 
   &__subtitle {
@@ -45,7 +55,7 @@
   &:hover {
     transform: translateY(-4px);
     border-color: rgba(255, 107, 53, 0.3);
-    box-shadow: 0 12px 40px rgba(0, 0, 0, 0.4);
+    box-shadow: var(--shadow-hover);
 
     &::before {
       opacity: 1;
@@ -80,7 +90,7 @@
     align-items: center;
     justify-content: center;
     letter-spacing: 0.3px;
-    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.3);
+    box-shadow: 0 4px 12px rgba(255, 107, 53, 0.25);
   }
 
   &__name {

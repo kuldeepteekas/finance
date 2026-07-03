@@ -111,6 +111,7 @@ public class TransactionHistoryService {
                 .description(tx.getDescription())
                 .failureReason(tx.getFailureReason())
                 .correlationId(tx.getCorrelationId())
+                .counterpartyAccountId(tx.getCounterpartyAccountId())
                 .idempotencyKey(tx.getIdempotencyKey())
                 .externalCallStatus(tx.getExternalCallStatus())
                 .createdAt(tx.getCreatedAt())

@@ -106,6 +106,9 @@ export class TransactionOverviewComponent implements OnInit {
       { label: 'Description', value: tx.description || 'N/A' },
       { label: 'Failure Reason', value: tx.failureReason || 'N/A' },
       { label: 'Correlation ID', value: tx.correlationId },
+      ...(tx.counterpartyAccountId
+        ? [{ label: tx.type === 'EXCHANGE_IN' ? 'From Account' : 'To Account', value: tx.counterpartyAccountId }]
+        : []),
       { label: 'Idempotency Key', value: tx.idempotencyKey },
       { label: 'External Call Status', value: tx.externalCallStatus },
       { label: 'Date', value: this.formatDate(tx.createdAt) }
