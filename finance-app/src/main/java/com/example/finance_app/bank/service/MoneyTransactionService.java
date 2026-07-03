@@ -38,8 +38,14 @@ import java.util.stream.Stream;
  * every call goes through the proxy.
  *
  * Concurrency protections implemented here:
- *  1. REPEATABLE_READ isolation — consistent reads within a transaction, prevents dirty reads.
- *  2. PESSIMISTIC_WRITE (SELECT FOR UPDATE) — row-level lock prevents concurrent balance changes.
+ *  1. READ_COMMITTED isolation — correct pairing for pessimistic locking in PostgreSQL.
+ *     WHY NOT REPEATABLE_READ? PostgreSQL MVCC takes a snapshot at transaction start.
+ *     If Thread A commits while Thread B is waiting for the row lock, Thread B's snapshot
+ *     is now stale. PostgreSQL then throws "could not serialize access due to concurrent
+ *     update" instead of proceeding. READ_COMMITTED avoids this: after acquiring the lock,
+ *     each transaction reads the actual committed value (not a stale snapshot).
+ *  2. PESSIMISTIC_WRITE (SELECT FOR UPDATE) — row-level lock prevents concurrent balance
+ *     changes. Threads queue on the lock; each reads the freshly-committed balance.
  *  3. Deadlock prevention — always acquire account locks in ascending UUID order.
  *  4. Post-lock balance check — balance is checked only AFTER acquiring the lock (prevents TOCTOU).
  *  5. REQUIRES_NEW for failed transactions — rolls back in its own independent commit so the
@@ -57,8 +63,9 @@ public class MoneyTransactionService {
 
     // ─── DEPOSIT ─────────────────────────────────────────────────────────────
 
-    // PROTECTION #1: REPEATABLE_READ — no phantom reads; consistent balance across the transaction.
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    // PROTECTION #1 + #2: READ_COMMITTED + SELECT FOR UPDATE.
+    // Threads queue on the pessimistic lock; each reads the freshly-committed balance on acquire.
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TransactionResponse executeDeposit(UUID accountId, UUID userId, BigDecimal amount,
                                               String description, String idempotencyKey) {
 
@@ -92,7 +99,7 @@ public class MoneyTransactionService {
 
     // ─── WITHDRAW ────────────────────────────────────────────────────────────
 
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public TransactionResponse executeWithdraw(UUID accountId, UUID userId, BigDecimal amount,
                                                String description, String idempotencyKey,
                                                ExternalCallStatus externalCallStatus) {
@@ -133,7 +140,7 @@ public class MoneyTransactionService {
 
     // ─── EXCHANGE ────────────────────────────────────────────────────────────
 
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<TransactionResponse> executeExchange(UUID fromAccountId, UUID toAccountId,
                                                      UUID userId, BigDecimal amount,
                                                      String description, String idempotencyKey,
@@ -232,7 +239,7 @@ public class MoneyTransactionService {
     // Same currency  → TRANSFER_OUT / TRANSFER_IN  (1:1, no conversion)
     // Cross-currency → EXCHANGE_OUT / EXCHANGE_IN  (rate-converted, same as /exchange)
 
-    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    @Transactional(isolation = Isolation.READ_COMMITTED)
     public List<TransactionResponse> executeTransfer(UUID fromAccountId, UUID toAccountId,
                                                      UUID userId, BigDecimal amount,
                                                      String description, String idempotencyKey,

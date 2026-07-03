@@ -14,6 +14,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -41,19 +43,25 @@ class WithdrawalConcurrencyTest {
     @Autowired AccountRepository accountRepository;
     @Autowired UserRepository userRepository;
     @Autowired TransactionRepository transactionRepository;
+    @Autowired PlatformTransactionManager transactionManager;
 
     private User testUser;
     private Account testAccount;
 
+    // TransactionTemplate gives us a guaranteed transaction context for cleanup,
+    // regardless of how Spring Test wires lifecycle methods.
     @AfterEach
     void cleanup() {
-        if (testAccount != null) {
-            transactionRepository.deleteByAccount_Id(testAccount.getId());
-            accountRepository.delete(testAccount);
-        }
-        if (testUser != null) {
-            userRepository.delete(testUser);
-        }
+        new TransactionTemplate(transactionManager).execute(status -> {
+            if (testAccount != null) {
+                transactionRepository.deleteByAccount_Id(testAccount.getId());
+                accountRepository.deleteById(testAccount.getId());
+            }
+            if (testUser != null) {
+                userRepository.deleteById(testUser.getId());
+            }
+            return null;
+        });
     }
 
     @Test
@@ -67,6 +75,7 @@ class WithdrawalConcurrencyTest {
                 .build());
 
         testAccount = accountRepository.save(Account.builder()
+                .accountNumber(String.valueOf(accountRepository.nextAccountNumber()))
                 .user(testUser)
                 .accountName("Concurrency Test Account")
                 .currency(Currency.EUR)
