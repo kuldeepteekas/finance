@@ -44,6 +44,12 @@ public class GlobalExceptionHandler {
                 "Required header missing: " + ex.getHeaderName());
     }
 
+    // 400 — cursor value is malformed or tampered
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiErrorResponse> handleIllegalArgument(IllegalArgumentException ex) {
+        return build(HttpStatus.BAD_REQUEST, "INVALID_INPUT", ex.getMessage());
+    }
+
     // 400 — @Valid annotation failures (e.g. missing currency, name too long)
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiErrorResponse> handleValidation(MethodArgumentNotValidException ex) {

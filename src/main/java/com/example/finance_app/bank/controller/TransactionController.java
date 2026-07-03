@@ -3,9 +3,11 @@ package com.example.finance_app.bank.controller;
 import com.example.finance_app.bank.dto.request.DepositRequest;
 import com.example.finance_app.bank.dto.request.ExchangeRequest;
 import com.example.finance_app.bank.dto.request.WithdrawRequest;
+import com.example.finance_app.bank.dto.response.TransactionPageResponse;
 import com.example.finance_app.bank.dto.response.TransactionResponse;
 import com.example.finance_app.bank.security.CustomUserDetails;
 import com.example.finance_app.bank.service.MoneyOperationService;
+import com.example.finance_app.bank.service.TransactionHistoryService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -22,6 +24,7 @@ import java.util.UUID;
 public class TransactionController {
 
     private final MoneyOperationService moneyOperationService;
+    private final TransactionHistoryService transactionHistoryService;
 
     // POST /api/v1/accounts/{accountId}/deposit
     // Header: Idempotency-Key: <uuid>
@@ -49,6 +52,19 @@ public class TransactionController {
         TransactionResponse response = moneyOperationService
                 .withdraw(userDetails.getUserId(), accountId, request, idempotencyKey);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    // GET /api/v1/accounts/{accountId}/transactions?cursor=...&size=20
+    // cursor is absent on the first request; pass nextCursor from the previous response to page forward.
+    @GetMapping("/{accountId}/transactions")
+    public ResponseEntity<TransactionPageResponse> getTransactions(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable UUID accountId,
+            @RequestParam(required = false) String cursor,
+            @RequestParam(required = false) Integer size) {
+
+        return ResponseEntity.ok(transactionHistoryService
+                .getTransactions(accountId, userDetails.getUserId(), cursor, size));
     }
 
     // POST /api/v1/accounts/{accountId}/exchange
