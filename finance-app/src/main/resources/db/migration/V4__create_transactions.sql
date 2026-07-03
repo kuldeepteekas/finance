@@ -1,4 +1,4 @@
-CREATE TABLE transactions (
+CREATE TABLE IF NOT EXISTS transactions (
     id                   UUID          PRIMARY KEY DEFAULT gen_random_uuid(),
     account_id           UUID          NOT NULL REFERENCES accounts(id),
     user_id              UUID          NOT NULL REFERENCES users(id),
@@ -18,16 +18,16 @@ CREATE TABLE transactions (
 
     -- Business rules: fixed transaction lifecycle values
     CONSTRAINT chk_transactions_type
-        CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'EXCHANGE_OUT', 'EXCHANGE_IN')),
+        CHECK (type IN ('DEPOSIT', 'WITHDRAWAL', 'TRANSFER_OUT', 'TRANSFER_IN', 'EXCHANGE_OUT', 'EXCHANGE_IN')),
     CONSTRAINT chk_transactions_status
         CHECK (status IN ('SUCCESS', 'FAILED')),
     CONSTRAINT chk_transactions_external_call_status
         CHECK (external_call_status IS NULL
-            OR external_call_status IN ('SUCCESS', 'FAILED', 'SKIPPED'))
+            OR external_call_status IN ('SUCCESS', 'FAILED', 'TIMED_OUT', 'SKIPPED'))
 );
 
-CREATE INDEX idx_transactions_account_id     ON transactions(account_id);
-CREATE INDEX idx_transactions_correlation_id ON transactions(correlation_id);
-CREATE INDEX idx_transactions_idempotency    ON transactions(idempotency_key);
+CREATE INDEX IF NOT EXISTS idx_transactions_account_id     ON transactions(account_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_correlation_id ON transactions(correlation_id);
+CREATE INDEX IF NOT EXISTS idx_transactions_idempotency    ON transactions(idempotency_key);
 -- DESC index supports cursor-based pagination (newest first)
-CREATE INDEX idx_transactions_created_at     ON transactions(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_transactions_created_at     ON transactions(created_at DESC);

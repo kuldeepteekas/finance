@@ -14,6 +14,7 @@ import java.util.UUID;
 public class AccountResponse {
 
     private UUID id;
+    private String accountNumber;
     private String accountName;
     private Currency currency;
     private BigDecimal balance;

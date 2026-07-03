@@ -6,6 +6,7 @@ import { toSignal } from '@angular/core/rxjs-interop';
 import jsPDF from 'jspdf';
 import { NavbarComponent } from '../../shared/components/navbar/navbar.component';
 import { selectSelectedTransaction } from '../../store/transactions/transactions.selectors';
+import { selectAllAccounts } from '../../store/accounts/accounts.selectors';
 import { TransactionResponse } from '../../core/models/account.model';
 
 @Component({
@@ -21,6 +22,13 @@ export class TransactionOverviewComponent implements OnInit {
   private readonly route = inject(ActivatedRoute);
 
   readonly transaction = toSignal(this.store.select(selectSelectedTransaction), { initialValue: null });
+  readonly allAccounts = toSignal(this.store.select(selectAllAccounts), { initialValue: [] });
+
+  accountNumberById(accountId: string | null): string {
+    if (!accountId) return 'N/A';
+    const account = this.allAccounts().find(a => a.id === accountId);
+    return account?.accountNumber ?? accountId;
+  }
 
   ngOnInit(): void {
     // If no transaction in store, the template will show error state
@@ -50,16 +58,18 @@ export class TransactionOverviewComponent implements OnInit {
   }
 
   isCredit(tx: TransactionResponse): boolean {
-    return tx.type === 'DEPOSIT' || tx.type === 'EXCHANGE_IN';
+    return tx.type === 'DEPOSIT' || tx.type === 'EXCHANGE_IN' || tx.type === 'TRANSFER_IN';
   }
 
   getTypeClass(type: string): string {
     switch (type) {
-      case 'DEPOSIT': return 'badge-success';
-      case 'WITHDRAWAL': return 'badge-danger';
-      case 'EXCHANGE_IN': return 'badge-info';
+      case 'DEPOSIT':      return 'badge-success';
+      case 'WITHDRAWAL':   return 'badge-danger';
+      case 'TRANSFER_IN':  return 'badge-info';
+      case 'TRANSFER_OUT': return 'badge-warning';
+      case 'EXCHANGE_IN':  return 'badge-info';
       case 'EXCHANGE_OUT': return 'badge-warning';
-      default: return 'badge-info';
+      default:             return 'badge-info';
     }
   }
 
@@ -96,7 +106,7 @@ export class TransactionOverviewComponent implements OnInit {
 
     const fields: { label: string; value: string }[] = [
       { label: 'Transaction ID', value: tx.id },
-      { label: 'Account ID', value: tx.accountId },
+      { label: 'Account Number', value: this.accountNumberById(tx.accountId) },
       { label: 'Type', value: tx.type.replace(/_/g, ' ') },
       { label: 'Status', value: tx.status },
       { label: 'Amount', value: this.formatAmount(tx.amount, tx.currency) },
@@ -107,7 +117,7 @@ export class TransactionOverviewComponent implements OnInit {
       { label: 'Failure Reason', value: tx.failureReason || 'N/A' },
       { label: 'Correlation ID', value: tx.correlationId },
       ...(tx.counterpartyAccountId
-        ? [{ label: tx.type === 'EXCHANGE_IN' ? 'From Account' : 'To Account', value: tx.counterpartyAccountId }]
+        ? [{ label: tx.type === 'EXCHANGE_IN' || tx.type === 'TRANSFER_IN' ? 'From Account' : 'To Account', value: this.accountNumberById(tx.counterpartyAccountId) }]
         : []),
       { label: 'Idempotency Key', value: tx.idempotencyKey },
       { label: 'External Call Status', value: tx.externalCallStatus },

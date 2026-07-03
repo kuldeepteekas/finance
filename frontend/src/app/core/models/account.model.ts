@@ -1,5 +1,6 @@
 export interface AccountResponse {
   id: string;
+  accountNumber: string;
   accountName: string;
   currency: 'EUR' | 'USD' | 'SEK' | 'GBP' | 'VND';
   balance: number;

@@ -10,28 +10,8 @@ INSERT INTO currencies (code, name, is_active) VALUES
     ('USD', 'US Dollar',         TRUE),
     ('SEK', 'Swedish Krona',     TRUE),
     ('GBP', 'British Pound',     TRUE),
-    ('VND', 'Vietnamese Dong',   TRUE);
-
--- =============================================================
--- Seed: Users
--- Passwords are BCrypt-hashed (cost 10)
---   alice → plaintext: "password"
---   bob   → plaintext: "password2"
--- =============================================================
-INSERT INTO users (id, username, email, password, full_name, created_at, updated_at) VALUES
-    ('a0000000-0000-0000-0000-000000000001', 'alice', 'alice@example.com', '$2y$10$ntlR.jz4jSkNgaootLpxauNHurCsZYT6NZmJieYgY8jVqDLNTcmGO', 'Alice Smith', NOW(), NOW()),
-    ('b0000000-0000-0000-0000-000000000001', 'bob',   'bob@example.com',   '$2y$10$Ov/91rm71cVGtsI0KqBeWuoXfcufhNLyp9JBMzixvpMHj9bFWbrtK', 'Bob Jones',  NOW(), NOW());
-
--- =============================================================
--- Seed: Accounts
--- alice: EUR + USD accounts
--- bob:   GBP + SEK accounts
--- =============================================================
-INSERT INTO accounts (id, user_id, currency, balance, status, created_at, updated_at) VALUES
-    ('a0000000-0000-0000-0001-000000000001', 'a0000000-0000-0000-0000-000000000001', 'EUR', 1000.0000, 'ACTIVE', NOW(), NOW()),
-    ('a0000000-0000-0000-0002-000000000001', 'a0000000-0000-0000-0000-000000000001', 'USD',  500.0000, 'ACTIVE', NOW(), NOW()),
-    ('b0000000-0000-0000-0001-000000000001', 'b0000000-0000-0000-0000-000000000001', 'GBP',  750.0000, 'ACTIVE', NOW(), NOW()),
-    ('b0000000-0000-0000-0002-000000000001', 'b0000000-0000-0000-0000-000000000001', 'SEK', 5000.0000, 'ACTIVE', NOW(), NOW());
+    ('VND', 'Vietnamese Dong',   TRUE)
+ON CONFLICT (code) DO NOTHING;
 
 -- =============================================================
 -- Seed: Exchange Rates
@@ -67,4 +47,5 @@ INSERT INTO exchange_rates (from_currency, to_currency, rate, effective_from, cr
     ('VND', 'EUR', 0.000037,     NOW(), NOW()),
     ('VND', 'USD', 0.000040,     NOW(), NOW()),
     ('VND', 'SEK', 0.000426,     NOW(), NOW()),
-    ('VND', 'GBP', 0.000032,     NOW(), NOW());
+    ('VND', 'GBP', 0.000032,     NOW(), NOW())
+ON CONFLICT (from_currency, to_currency, effective_from) DO NOTHING;

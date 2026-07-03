@@ -20,6 +20,10 @@ public interface AccountRepository extends JpaRepository<Account, UUID> {
     // Unauthorized access returns 404 (not 403), preventing account ID enumeration.
     Optional<Account> findByIdAndUser_Id(UUID accountId, UUID userId);
 
+    // Pulls the next value from the DB sequence — used to assign account_number on creation
+    @Query(value = "SELECT nextval('account_number_seq')", nativeQuery = true)
+    Long nextAccountNumber();
+
     // CONCURRENCY PROTECTION: SELECT ... FOR UPDATE (pessimistic write lock).
     // Translates to: SELECT * FROM accounts WHERE id = ? FOR UPDATE
     // Postgres holds this row lock until the enclosing transaction commits or rolls back.

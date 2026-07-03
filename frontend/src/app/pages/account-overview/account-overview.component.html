@@ -37,7 +37,7 @@
         <span class="badge" [class]="getStatusClass(account()!.status)">
           {{ account()!.status }}
         </span>
-        <div class="account-header__id">ID: {{ account()!.id }}</div>
+        <div class="account-header__id">Acct No: {{ account()!.accountNumber }}</div>
       </div>
     </div>
 
@@ -267,7 +267,7 @@
                 [disabled]="modalLoading()"
               >
                 @for (acc of otherAccounts(); track acc.id) {
-                  <option [value]="acc.id">{{ acc.accountName }} ({{ acc.currency }})</option>
+                  <option [value]="acc.id">{{ acc.accountName }} · {{ acc.accountNumber }} ({{ acc.currency }})</option>
                 }
               </select>
             </div>

@@ -24,6 +24,11 @@ public class Account {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    // Human-readable account number (e.g. 1000000001) — set from DB sequence on creation.
+    // Immutable after creation: updatable = false.
+    @Column(nullable = false, unique = true, updatable = false, length = 10)
+    private String accountNumber;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", nullable = false)
     private User user;

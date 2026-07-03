@@ -64,8 +64,8 @@
         </div>
 
         <div class="tx-field">
-          <span class="tx-field__label">Account ID</span>
-          <span class="tx-field__value tx-field__value--mono">{{ transaction()!.accountId }}</span>
+          <span class="tx-field__label">Account Number</span>
+          <span class="tx-field__value tx-field__value--mono">{{ accountNumberById(transaction()!.accountId) }}</span>
         </div>
 
         <div class="tx-field">
@@ -136,10 +136,10 @@
         @if (transaction()!.counterpartyAccountId) {
           <div class="tx-field">
             <span class="tx-field__label">
-              @if (transaction()!.type === 'EXCHANGE_IN') { From Account }
+              @if (transaction()!.type === 'EXCHANGE_IN' || transaction()!.type === 'TRANSFER_IN') { From Account }
               @else { To Account }
             </span>
-            <span class="tx-field__value tx-field__value--mono">{{ transaction()!.counterpartyAccountId }}</span>
+            <span class="tx-field__value tx-field__value--mono">{{ accountNumberById(transaction()!.counterpartyAccountId) }}</span>
           </div>
         }
 

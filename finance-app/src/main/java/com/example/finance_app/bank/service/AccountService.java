@@ -24,7 +24,10 @@ public class AccountService {
 
     @Transactional
     public AccountResponse createAccount(UUID userId, CreateAccountRequest request) {
+        String accountNumber = String.valueOf(accountRepository.nextAccountNumber());
+
         Account account = Account.builder()
+                .accountNumber(accountNumber)
                 .user(userRepository.getReferenceById(userId)) // proxy — no extra DB query
                 .accountName(request.getAccountName())
                 .currency(request.getCurrency())
@@ -53,6 +56,7 @@ public class AccountService {
     private AccountResponse toResponse(Account account) {
         return AccountResponse.builder()
                 .id(account.getId())
+                .accountNumber(account.getAccountNumber())
                 .accountName(account.getAccountName())
                 .currency(account.getCurrency())
                 .balance(account.getBalance())
