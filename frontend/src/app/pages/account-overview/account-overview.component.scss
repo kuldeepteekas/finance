@@ -365,6 +365,18 @@
     font-size: 0.85rem;
   }
 
+  &--same-currency {
+    background: rgba(59, 130, 246, 0.06);
+    border-color: rgba(59, 130, 246, 0.25);
+    color: #1e40af;
+    font-size: 0.85rem;
+    line-height: 1.4;
+
+    strong {
+      font-weight: 700;
+    }
+  }
+
   &__rate,
   &__conversion {
     display: flex;

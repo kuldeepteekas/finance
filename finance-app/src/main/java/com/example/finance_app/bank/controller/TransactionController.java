@@ -2,6 +2,7 @@ package com.example.finance_app.bank.controller;
 
 import com.example.finance_app.bank.dto.request.DepositRequest;
 import com.example.finance_app.bank.dto.request.ExchangeRequest;
+import com.example.finance_app.bank.dto.request.TransferRequest;
 import com.example.finance_app.bank.dto.request.WithdrawRequest;
 import com.example.finance_app.bank.dto.response.TransactionPageResponse;
 import com.example.finance_app.bank.dto.response.TransactionResponse;
@@ -67,8 +68,23 @@ public class TransactionController {
                 .getTransactions(accountId, userDetails.getUserId(), cursor, size));
     }
 
+    // POST /api/v1/accounts/{accountId}/transfer
+    // Same-currency only. {accountId} is the source account; toAccountId is in the request body.
+    // Header: Idempotency-Key: <uuid>
+    @PostMapping("/{accountId}/transfer")
+    public ResponseEntity<List<TransactionResponse>> transfer(
+            @AuthenticationPrincipal CustomUserDetails userDetails,
+            @PathVariable UUID accountId,
+            @RequestHeader("Idempotency-Key") String idempotencyKey,
+            @Valid @RequestBody TransferRequest request) {
+
+        List<TransactionResponse> responses = moneyOperationService
+                .transfer(userDetails.getUserId(), accountId, request, idempotencyKey);
+        return ResponseEntity.status(HttpStatus.CREATED).body(responses);
+    }
+
     // POST /api/v1/accounts/{accountId}/exchange
-    // {accountId} is the source (from) account; toAccountId is in the request body.
+    // Cross-currency only. {accountId} is the source (from) account; toAccountId is in the request body.
     // Header: Idempotency-Key: <uuid>
     @PostMapping("/{accountId}/exchange")
     public ResponseEntity<List<TransactionResponse>> exchange(

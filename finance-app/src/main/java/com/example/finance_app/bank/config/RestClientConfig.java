@@ -12,7 +12,7 @@ import java.time.Duration;
 @Configuration
 public class RestClientConfig {
 
-    @Value("${audit.service.base-url:http://localhost:9090/sim}")
+    @Value("${audit.service.base-url:https://httpbun.com}")
     private String auditServiceBaseUrl;
 
     @Value("${audit.service.connect-timeout-ms:3000}")

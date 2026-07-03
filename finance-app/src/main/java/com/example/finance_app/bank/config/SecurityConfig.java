@@ -32,7 +32,6 @@ public class SecurityConfig {
             // allows preflight OPTIONS requests before authentication kicks in
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-            // REST API — no CSRF needed (stateless, no browser session)
             .csrf(AbstractHttpConfigurer::disable)
 
             // No server-side sessions — every request must carry credentials
@@ -62,7 +61,6 @@ public class SecurityConfig {
         CorsConfiguration config = new CorsConfiguration();
 
         // Allowed origins — Angular dev server + production domain
-        // In production: replace with your actual deployed frontend URL
         config.setAllowedOrigins(List.of(
             "http://localhost:4200"   // Angular dev server
         ));
@@ -79,7 +77,6 @@ public class SecurityConfig {
         // Do not send cookies — stateless API
         config.setAllowCredentials(false);
 
-        // Cache preflight response for 1 hour (reduces OPTIONS requests)
         config.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();

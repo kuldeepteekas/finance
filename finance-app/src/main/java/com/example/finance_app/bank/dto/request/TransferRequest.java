@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 @Getter
-public class ExchangeRequest {
+public class TransferRequest {
 
     @NotNull(message = "Target account ID is required")
     private UUID toAccountId;

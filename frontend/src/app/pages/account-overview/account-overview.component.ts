@@ -93,6 +93,12 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   showConfirmation = signal(false);
   selectedTargetAccount = signal<AccountResponse | null>(null);
 
+  readonly isSameCurrencyTransfer = computed<boolean>(() => {
+    const from = this.account()?.currency;
+    const to = this.selectedTargetAccount()?.currency;
+    return !!from && !!to && from === to;
+  });
+
   readonly receivedAmount = computed<number | null>(() => {
     const amount = parseFloat(this.modalAmount());
     const rate = this.exchangeRate();
@@ -207,14 +213,15 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
 
     const idempotencyKey = crypto.randomUUID();
     const description = this.modalDescription().trim() || undefined;
-    let call$;
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    let call$: any;
 
     if (type === 'deposit') {
       call$ = this.accountApi.deposit(this.accountId, amount, idempotencyKey, description);
     } else if (type === 'withdraw') {
       call$ = this.accountApi.withdraw(this.accountId, amount, idempotencyKey, description);
     } else {
-      call$ = this.accountApi.exchange(
+      call$ = this.accountApi.transfer(
         this.accountId,
         this.modalTargetAccountId(),
         amount,
@@ -231,7 +238,8 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
         this.store.dispatch(loadTransactions({ accountId: this.accountId }));
         setTimeout(() => this.closeModal(), 1200);
       },
-      error: (err) => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      error: (err: any) => {
         this.modalLoading.set(false);
         this.showConfirmation.set(false);
         const msg =
@@ -428,16 +436,18 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   }
 
   isCredit(tx: TransactionResponse): boolean {
-    return tx.type === 'DEPOSIT' || tx.type === 'EXCHANGE_IN';
+    return tx.type === 'DEPOSIT' || tx.type === 'EXCHANGE_IN' || tx.type === 'TRANSFER_IN';
   }
 
   getTypeClass(type: string): string {
     switch (type) {
-      case 'DEPOSIT': return 'badge-success';
-      case 'WITHDRAWAL': return 'badge-danger';
-      case 'EXCHANGE_IN': return 'badge-info';
+      case 'DEPOSIT':      return 'badge-success';
+      case 'WITHDRAWAL':   return 'badge-danger';
+      case 'TRANSFER_IN':  return 'badge-info';
+      case 'TRANSFER_OUT': return 'badge-warning';
+      case 'EXCHANGE_IN':  return 'badge-info';
       case 'EXCHANGE_OUT': return 'badge-warning';
-      default: return 'badge-info';
+      default:             return 'badge-info';
     }
   }
 

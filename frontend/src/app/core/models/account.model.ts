@@ -10,7 +10,7 @@ export interface AccountResponse {
 export interface TransactionResponse {
   id: string;
   accountId: string;
-  type: 'DEPOSIT' | 'WITHDRAWAL' | 'EXCHANGE_OUT' | 'EXCHANGE_IN';
+  type: 'DEPOSIT' | 'WITHDRAWAL' | 'EXCHANGE_OUT' | 'EXCHANGE_IN' | 'TRANSFER_OUT' | 'TRANSFER_IN';
   amount: number;
   currency: string;
   balanceBefore: number;

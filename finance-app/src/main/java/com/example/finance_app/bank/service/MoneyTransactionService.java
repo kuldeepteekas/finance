@@ -152,12 +152,11 @@ public class MoneyTransactionService {
         Account fromAccount = first.getId().equals(fromAccountId) ? first : second;
         Account toAccount   = first.getId().equals(toAccountId)   ? first : second;
 
-        // Defense-in-depth: same-currency guard (also checked in orchestrator before entering this tx)
+        // Cross-currency only — same-currency requests are rejected in the orchestrator
         if (fromAccount.getCurrency() == toAccount.getCurrency()) {
             throw new SameCurrencyExchangeException(fromAccount.getCurrency());
         }
 
-        // Fetch the latest applicable exchange rate for this currency pair
         ExchangeRate rate = exchangeRateRepository
                 .findTopByFromCurrencyAndToCurrencyOrderByEffectiveFromDesc(
                         fromAccount.getCurrency(), toAccount.getCurrency())
@@ -171,7 +170,7 @@ public class MoneyTransactionService {
             throw new InsufficientFundsException(fromAccountId, amount, fromBalanceBefore);
         }
 
-        // Convert: multiply source amount by rate, round to 4 decimal places (HALF_EVEN = banker's rounding)
+        // Banker's rounding (HALF_EVEN) to 4 decimal places
         BigDecimal convertedAmount = amount.multiply(rate.getRate()).setScale(4, RoundingMode.HALF_EVEN);
 
         BigDecimal fromBalanceAfter = fromBalanceBefore.subtract(amount);
@@ -183,7 +182,6 @@ public class MoneyTransactionService {
         accountRepository.save(fromAccount);
         accountRepository.save(toAccount);
 
-        // Both legs share the same correlationId so they can be matched in transaction history
         UUID correlationId = UUID.randomUUID();
 
         Transaction outTx = Transaction.builder()
@@ -198,8 +196,8 @@ public class MoneyTransactionService {
                 .description(description)
                 .correlationId(correlationId)
                 .idempotencyKey(idempotencyKey)
-                .counterpartyAccountId(toAccount.getId())   // money went TO this account
-                .externalCallStatus(externalCallStatus) // external call done for EXCHANGE_OUT
+                .counterpartyAccountId(toAccount.getId())
+                .externalCallStatus(externalCallStatus)
                 .build();
 
         Transaction inTx = Transaction.builder()
@@ -214,8 +212,8 @@ public class MoneyTransactionService {
                 .description(description)
                 .correlationId(correlationId)
                 .idempotencyKey(idempotencyKey)
-                .counterpartyAccountId(fromAccount.getId()) // money came FROM this account
-                .externalCallStatus(ExternalCallStatus.SKIPPED) // EXCHANGE_IN never does the external call
+                .counterpartyAccountId(fromAccount.getId())
+                .externalCallStatus(ExternalCallStatus.SKIPPED)
                 .build();
 
         transactionRepository.save(outTx);
@@ -226,6 +224,150 @@ public class MoneyTransactionService {
                 rate.getRate(), correlationId);
 
         return List.of(toResponse(outTx), toResponse(inTx));
+    }
+
+    // ─── TRANSFER ────────────────────────────────────────────────────────────
+    //
+    // Handles both same-currency and cross-currency between two accounts.
+    // Same currency  → TRANSFER_OUT / TRANSFER_IN  (1:1, no conversion)
+    // Cross-currency → EXCHANGE_OUT / EXCHANGE_IN  (rate-converted, same as /exchange)
+
+    @Transactional(isolation = Isolation.REPEATABLE_READ)
+    public List<TransactionResponse> executeTransfer(UUID fromAccountId, UUID toAccountId,
+                                                     UUID userId, BigDecimal amount,
+                                                     String description, String idempotencyKey,
+                                                     ExternalCallStatus externalCallStatus) {
+
+        // PROTECTION #3: DEADLOCK PREVENTION — lock in ascending UUID order
+        List<UUID> lockOrder = Stream.of(fromAccountId, toAccountId).sorted().toList();
+
+        Account first  = lockAccount(lockOrder.get(0));
+        Account second = lockAccount(lockOrder.get(1));
+
+        Account fromAccount = first.getId().equals(fromAccountId) ? first : second;
+        Account toAccount   = first.getId().equals(toAccountId)   ? first : second;
+
+        BigDecimal fromBalanceBefore = fromAccount.getBalance();
+
+        // PROTECTION #4: Balance check after lock
+        if (fromBalanceBefore.compareTo(amount) < 0) {
+            throw new InsufficientFundsException(fromAccountId, amount, fromBalanceBefore);
+        }
+
+        UUID correlationId = UUID.randomUUID();
+
+        if (fromAccount.getCurrency() == toAccount.getCurrency()) {
+            // ── Same currency: direct 1:1 transfer ──────────────────────────
+            BigDecimal fromBalanceAfter = fromBalanceBefore.subtract(amount);
+            BigDecimal toBalanceBefore  = toAccount.getBalance();
+            BigDecimal toBalanceAfter   = toBalanceBefore.add(amount);
+
+            fromAccount.setBalance(fromBalanceAfter);
+            toAccount.setBalance(toBalanceAfter);
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            Transaction outTx = Transaction.builder()
+                    .account(fromAccount)
+                    .user(userRepository.getReferenceById(userId))
+                    .type(TransactionType.TRANSFER_OUT)
+                    .amount(amount)
+                    .currency(fromAccount.getCurrency())
+                    .balanceBefore(fromBalanceBefore)
+                    .balanceAfter(fromBalanceAfter)
+                    .status(TransactionStatus.SUCCESS)
+                    .description(description)
+                    .correlationId(correlationId)
+                    .idempotencyKey(idempotencyKey)
+                    .counterpartyAccountId(toAccount.getId())
+                    .externalCallStatus(externalCallStatus)
+                    .build();
+
+            Transaction inTx = Transaction.builder()
+                    .account(toAccount)
+                    .user(userRepository.getReferenceById(userId))
+                    .type(TransactionType.TRANSFER_IN)
+                    .amount(amount)
+                    .currency(toAccount.getCurrency())
+                    .balanceBefore(toBalanceBefore)
+                    .balanceAfter(toBalanceAfter)
+                    .status(TransactionStatus.SUCCESS)
+                    .description(description)
+                    .correlationId(correlationId)
+                    .idempotencyKey(idempotencyKey)
+                    .counterpartyAccountId(fromAccount.getId())
+                    .externalCallStatus(ExternalCallStatus.SKIPPED)
+                    .build();
+
+            transactionRepository.save(outTx);
+            transactionRepository.save(inTx);
+
+            log.info("Transfer completed: {} {} from {} to {}, correlationId={}",
+                    amount, fromAccount.getCurrency(), fromAccountId, toAccountId, correlationId);
+
+            return List.of(toResponse(outTx), toResponse(inTx));
+
+        } else {
+            // ── Cross-currency: fetch rate and convert ───────────────────────
+            ExchangeRate rate = exchangeRateRepository
+                    .findTopByFromCurrencyAndToCurrencyOrderByEffectiveFromDesc(
+                            fromAccount.getCurrency(), toAccount.getCurrency())
+                    .orElseThrow(() -> new ExchangeRateNotFoundException(
+                            fromAccount.getCurrency(), toAccount.getCurrency()));
+
+            // Banker's rounding (HALF_EVEN) to 4 decimal places
+            BigDecimal convertedAmount = amount.multiply(rate.getRate()).setScale(4, RoundingMode.HALF_EVEN);
+
+            BigDecimal fromBalanceAfter = fromBalanceBefore.subtract(amount);
+            BigDecimal toBalanceBefore  = toAccount.getBalance();
+            BigDecimal toBalanceAfter   = toBalanceBefore.add(convertedAmount);
+
+            fromAccount.setBalance(fromBalanceAfter);
+            toAccount.setBalance(toBalanceAfter);
+            accountRepository.save(fromAccount);
+            accountRepository.save(toAccount);
+
+            Transaction outTx = Transaction.builder()
+                    .account(fromAccount)
+                    .user(userRepository.getReferenceById(userId))
+                    .type(TransactionType.EXCHANGE_OUT)
+                    .amount(amount)
+                    .currency(fromAccount.getCurrency())
+                    .balanceBefore(fromBalanceBefore)
+                    .balanceAfter(fromBalanceAfter)
+                    .status(TransactionStatus.SUCCESS)
+                    .description(description)
+                    .correlationId(correlationId)
+                    .idempotencyKey(idempotencyKey)
+                    .counterpartyAccountId(toAccount.getId())
+                    .externalCallStatus(externalCallStatus)
+                    .build();
+
+            Transaction inTx = Transaction.builder()
+                    .account(toAccount)
+                    .user(userRepository.getReferenceById(userId))
+                    .type(TransactionType.EXCHANGE_IN)
+                    .amount(convertedAmount)
+                    .currency(toAccount.getCurrency())
+                    .balanceBefore(toBalanceBefore)
+                    .balanceAfter(toBalanceAfter)
+                    .status(TransactionStatus.SUCCESS)
+                    .description(description)
+                    .correlationId(correlationId)
+                    .idempotencyKey(idempotencyKey)
+                    .counterpartyAccountId(fromAccount.getId())
+                    .externalCallStatus(ExternalCallStatus.SKIPPED)
+                    .build();
+
+            transactionRepository.save(outTx);
+            transactionRepository.save(inTx);
+
+            log.info("Transfer (exchange): {} {} → {} {} (rate={}), correlationId={}",
+                    amount, fromAccount.getCurrency(), convertedAmount, toAccount.getCurrency(),
+                    rate.getRate(), correlationId);
+
+            return List.of(toResponse(outTx), toResponse(inTx));
+        }
     }
 
     // ─── SAVE FAILED TRANSACTION ─────────────────────────────────────────────

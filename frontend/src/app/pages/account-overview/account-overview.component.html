@@ -177,7 +177,18 @@
                 {{ account()!.currency }} {{ modalAmount() }}
               </span>
             </div>
-            @if (receivedAmount() !== null) {
+            @if (isSameCurrencyTransfer()) {
+              <div class="confirm-summary__row">
+                <span class="confirm-summary__label">They receive</span>
+                <span class="confirm-summary__value confirm-summary__value--receive">
+                  {{ selectedTargetAccount()?.currency }} {{ modalAmount() }}
+                </span>
+              </div>
+              <div class="confirm-summary__row">
+                <span class="confirm-summary__label">Rate</span>
+                <span class="confirm-summary__value confirm-summary__value--rate">1:1 (same currency)</span>
+              </div>
+            } @else if (receivedAmount() !== null) {
               <div class="confirm-summary__row">
                 <span class="confirm-summary__label">They receive</span>
                 <span class="confirm-summary__value confirm-summary__value--receive">
@@ -261,8 +272,12 @@
               </select>
             </div>
 
-            <!-- Exchange rate preview -->
-            @if (exchangeRateLoading()) {
+            <!-- Exchange rate preview / same-currency notice -->
+            @if (isSameCurrencyTransfer()) {
+              <div class="rate-preview rate-preview--same-currency">
+                Both accounts use <strong>{{ account()?.currency }}</strong> — funds will be transferred directly at 1:1 with no conversion.
+              </div>
+            } @else if (exchangeRateLoading()) {
               <div class="rate-preview rate-preview--loading">
                 <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>
                 Fetching exchange rate...

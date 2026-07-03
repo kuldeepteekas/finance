@@ -25,16 +25,16 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.UNPROCESSABLE_ENTITY, "INSUFFICIENT_FUNDS", ex.getMessage());
     }
 
-    // 400 — exchange requested between two accounts with the same currency
-    @ExceptionHandler(SameCurrencyExchangeException.class)
-    public ResponseEntity<ApiErrorResponse> handleSameCurrency(SameCurrencyExchangeException ex) {
-        return build(HttpStatus.BAD_REQUEST, "SAME_CURRENCY_EXCHANGE", ex.getMessage());
-    }
-
     // 400 — no exchange rate on record for the requested currency pair
     @ExceptionHandler(ExchangeRateNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleExchangeRateNotFound(ExchangeRateNotFoundException ex) {
         return build(HttpStatus.BAD_REQUEST, "EXCHANGE_RATE_NOT_FOUND", ex.getMessage());
+    }
+
+    // 400 — /exchange called with two accounts that have the same currency
+    @ExceptionHandler(SameCurrencyExchangeException.class)
+    public ResponseEntity<ApiErrorResponse> handleSameCurrencyExchange(SameCurrencyExchangeException ex) {
+        return build(HttpStatus.BAD_REQUEST, "SAME_CURRENCY_EXCHANGE", ex.getMessage());
     }
 
     // 400 — required header missing (e.g. Idempotency-Key not provided)

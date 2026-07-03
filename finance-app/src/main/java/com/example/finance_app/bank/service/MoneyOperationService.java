@@ -2,13 +2,13 @@ package com.example.finance_app.bank.service;
 
 import com.example.finance_app.bank.dto.request.DepositRequest;
 import com.example.finance_app.bank.dto.request.ExchangeRequest;
+import com.example.finance_app.bank.dto.request.TransferRequest;
 import com.example.finance_app.bank.dto.request.WithdrawRequest;
 import com.example.finance_app.bank.dto.response.TransactionResponse;
 import com.example.finance_app.bank.enums.ExternalCallStatus;
 import com.example.finance_app.bank.enums.TransactionType;
 import com.example.finance_app.bank.exception.AccountNotFoundException;
 import com.example.finance_app.bank.exception.InsufficientFundsException;
-import com.example.finance_app.bank.exception.SameCurrencyExchangeException;
 import com.example.finance_app.bank.model.Account;
 import com.example.finance_app.bank.model.IdempotencyKey;
 import com.example.finance_app.bank.repository.AccountRepository;
@@ -117,6 +117,50 @@ public class MoneyOperationService {
         }
     }
 
+    // ─── TRANSFER ────────────────────────────────────────────────────────────
+
+    public List<TransactionResponse> transfer(UUID userId, UUID fromAccountId,
+                                              TransferRequest request, String idempotencyKey) {
+
+        Optional<IdempotencyKey> existing = idempotencyService.findExistingKey(userId, idempotencyKey);
+        if (existing.isPresent()) {
+            log.info("Duplicate transfer — replaying cached response, key={}", idempotencyKey);
+            return idempotencyService.deserializeList(existing.get().getResponseBody());
+        }
+
+        // Verify both accounts belong to the authenticated user
+        accountRepository.findByIdAndUser_Id(fromAccountId, userId)
+                .orElseThrow(() -> new AccountNotFoundException(fromAccountId));
+        accountRepository.findByIdAndUser_Id(request.getToAccountId(), userId)
+                .orElseThrow(() -> new AccountNotFoundException(request.getToAccountId()));
+
+        // External audit before DB transaction (keeps lock window short)
+        ExternalCallStatus auditStatus = externalAuditService.audit(
+                userId, fromAccountId, "TRANSFER", request.getAmount(), idempotencyKey);
+
+        UUID correlationId = UUID.randomUUID();
+
+        try {
+            List<TransactionResponse> responses = moneyTransactionService
+                    .executeTransfer(fromAccountId, request.getToAccountId(),
+                            userId, request.getAmount(), request.getDescription(),
+                            idempotencyKey, auditStatus);
+
+            idempotencyService.saveList(userId, idempotencyKey, 201, responses,
+                    userRepository.getReferenceById(userId));
+
+            return responses;
+
+        } catch (InsufficientFundsException e) {
+            log.warn("Insufficient funds for transfer: fromAccountId={}, requested={}", fromAccountId, request.getAmount());
+            moneyTransactionService.saveFailedTransaction(
+                    fromAccountId, userId, TransactionType.TRANSFER_OUT,
+                    request.getAmount(), e.getMessage(),
+                    idempotencyKey, correlationId, auditStatus);
+            throw e;
+        }
+    }
+
     // ─── EXCHANGE ────────────────────────────────────────────────────────────
 
     public List<TransactionResponse> exchange(UUID userId, UUID fromAccountId,
@@ -133,11 +177,6 @@ public class MoneyOperationService {
                 .orElseThrow(() -> new AccountNotFoundException(fromAccountId));
         Account toAccount = accountRepository.findByIdAndUser_Id(request.getToAccountId(), userId)
                 .orElseThrow(() -> new AccountNotFoundException(request.getToAccountId()));
-
-        // Fail fast before any lock or external call
-        if (fromAccount.getCurrency() == toAccount.getCurrency()) {
-            throw new SameCurrencyExchangeException(fromAccount.getCurrency());
-        }
 
         // External audit before DB transaction (keeps lock window short)
         ExternalCallStatus auditStatus = externalAuditService.audit(

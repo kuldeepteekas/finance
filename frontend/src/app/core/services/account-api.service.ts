@@ -70,14 +70,28 @@ export class AccountApiService {
     );
   }
 
+  transfer(
+    accountId: string,
+    targetAccountId: string,
+    amount: number,
+    idempotencyKey: string,
+    description?: string
+  ): Observable<TransactionResponse[]> {
+    return this.http.post<TransactionResponse[]>(
+      `${this.baseUrl}/accounts/${accountId}/transfer`,
+      { toAccountId: targetAccountId, amount, description: description || null },
+      { headers: { 'Idempotency-Key': idempotencyKey } }
+    );
+  }
+
   exchange(
     accountId: string,
     targetAccountId: string,
     amount: number,
     idempotencyKey: string,
     description?: string
-  ): Observable<TransactionResponse> {
-    return this.http.post<TransactionResponse>(
+  ): Observable<TransactionResponse[]> {
+    return this.http.post<TransactionResponse[]>(
       `${this.baseUrl}/accounts/${accountId}/exchange`,
       { toAccountId: targetAccountId, amount, description: description || null },
       { headers: { 'Idempotency-Key': idempotencyKey } }
