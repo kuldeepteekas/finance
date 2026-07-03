@@ -68,20 +68,19 @@
     </div>
   }
 
-  <!-- Balance Chart -->
+  <!-- Balance Chart — canvas is always in the DOM so ngAfterViewInit can find it -->
   <div class="chart-card card">
     <h2 class="section-title">Balance History</h2>
-    @if (transactions().length === 0 && loading()) {
-      <div class="chart-loading">
-        <span class="spinner spinner-lg"></span>
-      </div>
-    } @else if (transactions().length === 0 && !loading()) {
-      <div class="chart-empty">No transaction data to display</div>
-    } @else {
-      <div class="chart-wrapper">
-        <canvas #balanceChart></canvas>
-      </div>
-    }
+    <div class="chart-wrapper">
+      <canvas #balanceChart></canvas>
+      @if (transactions().length === 0 && loading()) {
+        <div class="chart-overlay">
+          <span class="spinner spinner-lg"></span>
+        </div>
+      } @else if (transactions().length === 0 && !loading()) {
+        <div class="chart-overlay">No transaction data to display</div>
+      }
+    </div>
   </div>
 
   <!-- Transactions List -->

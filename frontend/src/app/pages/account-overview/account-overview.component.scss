@@ -154,14 +154,16 @@
   width: 100%;
 }
 
-.chart-loading,
-.chart-empty {
-  height: 220px;
+.chart-overlay {
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  background: var(--card-bg);
   color: var(--text-muted);
   font-size: 0.9rem;
+  border-radius: var(--radius-sm);
 }
 
 /* ── Transactions ─────────────────────────────────────────── */

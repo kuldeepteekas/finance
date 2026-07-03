@@ -44,6 +44,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.OPTIONS, "/**").permitAll()
                 // Health check open to all (load balancers, monitoring)
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
+                // User registration is public — no credentials needed to sign up
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/v1/users/register").permitAll()
                 // Everything else requires authentication
                 .anyRequest().authenticated())
 

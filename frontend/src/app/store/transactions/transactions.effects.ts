@@ -20,7 +20,7 @@ export class TransactionsEffects {
     this.actions$.pipe(
       ofType(loadTransactions),
       switchMap(({ accountId }) =>
-        this.accountApiService.getTransactions(accountId).pipe(
+        this.accountApiService.getTransactions(accountId, null, 5).pipe(
           map((response) =>
             loadTransactionsSuccess({
               transactions: response.transactions,
@@ -39,7 +39,7 @@ export class TransactionsEffects {
     this.actions$.pipe(
       ofType(loadMoreTransactions),
       switchMap(({ accountId, cursor }) =>
-        this.accountApiService.getTransactions(accountId, cursor).pipe(
+        this.accountApiService.getTransactions(accountId, cursor, 5).pipe(
           map((response) =>
             loadMoreTransactionsSuccess({
               transactions: response.transactions,
