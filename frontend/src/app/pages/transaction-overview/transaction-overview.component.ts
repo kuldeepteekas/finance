@@ -80,7 +80,7 @@ export class TransactionOverviewComponent implements OnInit {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(14);
     doc.setFont('helvetica', 'bold');
-    doc.text('FinanceApp – Transaction Receipt', margin, 12);
+    doc.text('BankingApp – Transaction Receipt', margin, 12);
 
     y = 30;
     doc.setTextColor(30, 30, 50);
@@ -141,7 +141,7 @@ export class TransactionOverviewComponent implements OnInit {
     doc.setFontSize(8);
     doc.setTextColor(150, 150, 150);
     doc.setFont('helvetica', 'italic');
-    doc.text(`Generated on ${new Date().toLocaleString('en-US')} by FinanceApp`, margin, y);
+    doc.text(`Generated on ${new Date().toLocaleString('en-US')} by BankingApp`, margin, y);
 
     doc.save(`transaction-${tx.id}.pdf`);
   }

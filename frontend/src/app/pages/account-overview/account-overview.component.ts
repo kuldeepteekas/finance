@@ -306,8 +306,17 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
     this.router.navigate(['/']);
   }
 
+  private readonly CURRENCY_SYMBOLS: Record<string, string> = {
+    EUR: '€', USD: '$', GBP: '£', SEK: 'kr', VND: '₫'
+  };
+
+  currencySymbol(code: string): string {
+    return this.CURRENCY_SYMBOLS[code] ?? code;
+  }
+
   formatBalance(balance: number, currency: string): string {
-    return `${currency} ${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const symbol = this.currencySymbol(currency);
+    return `${currency} ${symbol}${balance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
   }
 
   formatDate(dateStr: string): string {

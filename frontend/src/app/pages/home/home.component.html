@@ -47,7 +47,8 @@
           (keydown.enter)="navigateToAccount(account)">
           <div class="account-card__top">
             <div class="account-card__currency-icon">
-              {{ account.currency }}
+              <span class="account-card__currency-symbol">{{ currencySymbol(account.currency) }}</span>
+              <span class="account-card__currency-code">{{ account.currency }}</span>
             </div>
             <span class="badge" [class]="getStatusClass(account.status)">
               {{ account.status }}

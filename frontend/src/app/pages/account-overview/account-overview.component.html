@@ -1,13 +1,16 @@
 <app-navbar />
 
 <div class="page-container account-page">
-  <!-- Back Button -->
-  <button class="back-btn btn-secondary" (click)="goBack()">
-    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-      <polyline points="15 18 9 12 15 6"/>
-    </svg>
-    Back to Accounts
-  </button>
+  <!-- Page Header -->
+  <div class="page-header">
+    <button class="back-btn btn-secondary" (click)="goBack()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back to Accounts
+    </button>
+    <h1 class="page-title"><span class="gradient-text">Account Overview</span></h1>
+  </div>
 
   @if (accountLoading() && !account()) {
     <div class="account-header card skeleton-header">
@@ -19,7 +22,10 @@
     <!-- Account Header -->
     <div class="account-header card">
       <div class="account-header__left">
-        <div class="account-header__currency">{{ account()!.currency }}</div>
+        <div class="account-header__currency">
+          <span class="account-header__currency-symbol">{{ currencySymbol(account()!.currency) }}</span>
+          <span class="account-header__currency-code">{{ account()!.currency }}</span>
+        </div>
         <div>
           <h1 class="account-header__name">{{ account()!.accountName }}</h1>
           <div class="account-header__balance">

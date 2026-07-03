@@ -82,15 +82,28 @@
     background: var(--gradient);
     color: #fff;
     font-weight: 700;
-    font-size: 0.8rem;
-    width: 42px;
-    height: 42px;
-    border-radius: 12px;
+    width: 52px;
+    height: 52px;
+    border-radius: 14px;
     display: flex;
+    flex-direction: column;
     align-items: center;
     justify-content: center;
-    letter-spacing: 0.3px;
     box-shadow: 0 4px 12px rgba(255, 107, 53, 0.25);
+    line-height: 1.1;
+    gap: 1px;
+  }
+
+  &__currency-symbol {
+    font-size: 1.1rem;
+    font-weight: 800;
+  }
+
+  &__currency-code {
+    font-size: 0.6rem;
+    font-weight: 600;
+    opacity: 0.88;
+    letter-spacing: 0.5px;
   }
 
   &__name {
