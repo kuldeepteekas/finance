@@ -2,6 +2,7 @@ package com.example.finance_app.bank.config;
 
 import com.example.finance_app.bank.security.CustomUserDetailsService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.Customizer;
@@ -16,6 +17,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
+import java.util.Arrays;
 import java.util.List;
 
 @Configuration
@@ -24,6 +26,10 @@ import java.util.List;
 public class SecurityConfig {
 
     private final CustomUserDetailsService userDetailsService;
+
+    // Comma-separated list — e.g. "http://localhost:4200,https://app.example.com"
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -60,10 +66,8 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
 
-        // Allowed origins — Angular dev server + production domain
-        config.setAllowedOrigins(List.of(
-            "http://localhost:4200"   // Angular dev server
-        ));
+        // Allowed origins — read from application.properties (comma-separated)
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
 
         // Standard HTTP methods used by the REST API
         config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));

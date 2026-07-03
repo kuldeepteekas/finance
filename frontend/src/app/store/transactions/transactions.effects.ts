@@ -20,7 +20,7 @@ export class TransactionsEffects {
     this.actions$.pipe(
       ofType(loadTransactions),
       switchMap(({ accountId }) =>
-        this.accountApiService.getTransactions(accountId, null, 5).pipe(
+        this.accountApiService.getTransactions(accountId, null, 7).pipe(
           map((response) =>
             loadTransactionsSuccess({
               transactions: response.transactions,

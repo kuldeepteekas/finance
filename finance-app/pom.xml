@@ -56,6 +56,13 @@
 			<artifactId>lombok</artifactId>
 			<optional>true</optional>
 		</dependency>
+		<!-- Rate limiting — per-user token-bucket for money endpoints -->
+		<dependency>
+			<groupId>com.bucket4j</groupId>
+			<artifactId>bucket4j-core</artifactId>
+			<version>8.10.1</version>
+		</dependency>
+
 		<!-- Comprehensive test starter: JUnit 5, Mockito, AssertJ, @WebMvcTest, @SpringBootTest, @MockitoBean, Spring Security Test -->
 		<dependency>
 			<groupId>org.springframework.boot</groupId>
