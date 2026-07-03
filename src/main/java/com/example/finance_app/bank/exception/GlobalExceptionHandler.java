@@ -6,6 +6,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -16,6 +17,31 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccountNotFoundException.class)
     public ResponseEntity<ApiErrorResponse> handleAccountNotFound(AccountNotFoundException ex) {
         return build(HttpStatus.NOT_FOUND, "ACCOUNT_NOT_FOUND", ex.getMessage());
+    }
+
+    // 422 — insufficient balance (operation well-formed but cannot be fulfilled)
+    @ExceptionHandler(InsufficientFundsException.class)
+    public ResponseEntity<ApiErrorResponse> handleInsufficientFunds(InsufficientFundsException ex) {
+        return build(HttpStatus.UNPROCESSABLE_ENTITY, "INSUFFICIENT_FUNDS", ex.getMessage());
+    }
+
+    // 400 — exchange requested between two accounts with the same currency
+    @ExceptionHandler(SameCurrencyExchangeException.class)
+    public ResponseEntity<ApiErrorResponse> handleSameCurrency(SameCurrencyExchangeException ex) {
+        return build(HttpStatus.BAD_REQUEST, "SAME_CURRENCY_EXCHANGE", ex.getMessage());
+    }
+
+    // 400 — no exchange rate on record for the requested currency pair
+    @ExceptionHandler(ExchangeRateNotFoundException.class)
+    public ResponseEntity<ApiErrorResponse> handleExchangeRateNotFound(ExchangeRateNotFoundException ex) {
+        return build(HttpStatus.BAD_REQUEST, "EXCHANGE_RATE_NOT_FOUND", ex.getMessage());
+    }
+
+    // 400 — required header missing (e.g. Idempotency-Key not provided)
+    @ExceptionHandler(MissingRequestHeaderException.class)
+    public ResponseEntity<ApiErrorResponse> handleMissingHeader(MissingRequestHeaderException ex) {
+        return build(HttpStatus.BAD_REQUEST, "MISSING_HEADER",
+                "Required header missing: " + ex.getHeaderName());
     }
 
     // 400 — @Valid annotation failures (e.g. missing currency, name too long)
