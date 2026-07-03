@@ -1,6 +1,6 @@
 # BankingApp
 
-A full-stack personal banking application. 
+A full-stack personal banking application.
 Manage multiple accounts in different currencies, move money between them with fixed exchange rates, and browse a full transaction history.
 BankingApp simulates a real-world banking backend paired with a responsive Angular frontend.
 
@@ -10,7 +10,7 @@ BankingApp simulates a real-world banking backend paired with a responsive Angul
 
 ### Backend (Spring Boot)
 - **Multi-currency accounts** — create accounts in EUR, USD, GBP, SEK, VND
-- **Deposit & Withdrawal** 
+- **Deposit & Withdrawal**
 - **Currency exchange (transfer)** — fixed exchange rates fetched at transfer time; both legs (EXCHANGE_OUT / EXCHANGE_IN) recorded atomically
 - **Cursor-based pagination** — transaction history loaded in pages of 5
 - **External audit call** — real HTTP call to `httpbun.com` before every debit with a 3-second timeout; records SUCCESS / FAILED / TIMED_OUT without blocking the operation
@@ -23,7 +23,7 @@ BankingApp simulates a real-world banking backend paired with a responsive Angul
 - **Dashboard** — all accounts listed with currency symbols and live balances
 - **Create account** — choose name and currency from the dashboard
 - **Account overview** — balance history line chart, deposit / withdraw / transfer action buttons
-- **Transfer flow** — target account selector, live exchange rate preview, confirmation screen before execution
+- **Transfer flow** — target account selector, exchange rate preview, confirmation screen before execution
 - **Infinite scroll** — transaction list auto-loads the next 5 on scroll
 - **Transaction detail** — full breakdown including counterparty account, correlation ID, external audit status
 - **PDF export** — download any transaction as a PDF receipt
@@ -86,6 +86,7 @@ docker compose up --build
 ```
 
 This starts three containers in order:
+
 1. **PostgreSQL** — waits until healthy
 2. **Spring Boot backend** — runs Flyway migrations, then starts on port 9090
 3. **Angular frontend** — served by nginx on port 4200
@@ -114,6 +115,20 @@ spring.profiles.active=docker   # uses application-docker.properties → db:5432
 ```
 
 When running via `docker compose`, the active profile is set automatically via the `SPRING_PROFILES_ACTIVE=docker` environment variable — no manual change needed.
+
+---
+
+## Demo users
+
+Three pre-seeded accounts are available to explore the app immediately after startup:
+
+| Username | Password |
+|---|---|
+| emma | Emma@1234 |
+| liam | Liam@1234 |
+| sofia | Sofia@1234 |
+
+Each user has several accounts with transaction history already populated, so you can see the charts and pagination in action without any setup.
 
 ---
 
@@ -158,6 +173,6 @@ finance-app/                   ← repo root
     └── src/
         └── app/
             ├── pages/         ← login, home, account-overview, transaction-overview
-            ├── store/         ← NgRx store (accounts, transactions)
+            ├── store/         ← NgRx store (accounts, transactions, auth)
             └── core/          ← services, models
 ```
