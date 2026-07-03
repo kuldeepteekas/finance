@@ -54,18 +54,18 @@ export class AccountApiService {
     );
   }
 
-  deposit(accountId: string, amount: number, idempotencyKey: string): Observable<TransactionResponse> {
+  deposit(accountId: string, amount: number, idempotencyKey: string, description?: string): Observable<TransactionResponse> {
     return this.http.post<TransactionResponse>(
       `${this.baseUrl}/accounts/${accountId}/deposit`,
-      { amount },
+      { amount, description: description || null },
       { headers: { 'Idempotency-Key': idempotencyKey } }
     );
   }
 
-  withdraw(accountId: string, amount: number, idempotencyKey: string): Observable<TransactionResponse> {
+  withdraw(accountId: string, amount: number, idempotencyKey: string, description?: string): Observable<TransactionResponse> {
     return this.http.post<TransactionResponse>(
       `${this.baseUrl}/accounts/${accountId}/withdraw`,
-      { amount },
+      { amount, description: description || null },
       { headers: { 'Idempotency-Key': idempotencyKey } }
     );
   }
@@ -74,11 +74,12 @@ export class AccountApiService {
     accountId: string,
     targetAccountId: string,
     amount: number,
-    idempotencyKey: string
+    idempotencyKey: string,
+    description?: string
   ): Observable<TransactionResponse> {
     return this.http.post<TransactionResponse>(
       `${this.baseUrl}/accounts/${accountId}/exchange`,
-      { toAccountId: targetAccountId, amount },
+      { toAccountId: targetAccountId, amount, description: description || null },
       { headers: { 'Idempotency-Key': idempotencyKey } }
     );
   }

@@ -135,9 +135,10 @@
           <span class="loading-more__text">Loading more...</span>
         </div>
       }
-
-      <div #sentinel class="sentinel"></div>
     }
+
+    <!-- Sentinel always in DOM so ngAfterViewInit can observe it -->
+    <div #sentinel class="sentinel"></div>
   </div>
 </div>
 
@@ -157,74 +158,177 @@
       </div>
 
       <div class="modal__body">
-        @if (account()) {
-          <div class="modal-account-info">
-            <span class="modal-account-info__label">From account</span>
-            <span class="modal-account-info__value">{{ account()!.accountName }} &mdash; {{ formatBalance(account()!.balance, account()!.currency) }}</span>
+
+        <!-- ── Confirmation screen (transfer only) ── -->
+        @if (showConfirmation()) {
+          <div class="confirm-summary">
+            <div class="confirm-summary__icon">↔</div>
+            <div class="confirm-summary__row">
+              <span class="confirm-summary__label">From</span>
+              <span class="confirm-summary__value">{{ account()!.accountName }}</span>
+            </div>
+            <div class="confirm-summary__row">
+              <span class="confirm-summary__label">To</span>
+              <span class="confirm-summary__value">{{ selectedTargetAccount()?.accountName }}</span>
+            </div>
+            <div class="confirm-summary__row">
+              <span class="confirm-summary__label">You send</span>
+              <span class="confirm-summary__value confirm-summary__value--send">
+                {{ account()!.currency }} {{ modalAmount() }}
+              </span>
+            </div>
+            @if (receivedAmount() !== null) {
+              <div class="confirm-summary__row">
+                <span class="confirm-summary__label">They receive</span>
+                <span class="confirm-summary__value confirm-summary__value--receive">
+                  {{ selectedTargetAccount()?.currency }} {{ receivedAmount()!.toFixed(2) }}
+                </span>
+              </div>
+              <div class="confirm-summary__row">
+                <span class="confirm-summary__label">Rate</span>
+                <span class="confirm-summary__value confirm-summary__value--rate">
+                  1 {{ account()!.currency }} = {{ exchangeRate() }} {{ selectedTargetAccount()?.currency }}
+                </span>
+              </div>
+            }
+            @if (modalDescription()) {
+              <div class="confirm-summary__row">
+                <span class="confirm-summary__label">Note</span>
+                <span class="confirm-summary__value">{{ modalDescription() }}</span>
+              </div>
+            }
+            <p class="confirm-summary__question">Do you want to proceed with this transfer?</p>
           </div>
-        }
 
-        <div class="form-field">
-          <label for="modalAmount">Amount ({{ account()?.currency }})</label>
-          <input
-            id="modalAmount"
-            type="number"
-            min="0.01"
-            step="0.01"
-            placeholder="0.00"
-            [value]="modalAmount()"
-            (input)="modalAmount.set($any($event.target).value)"
-            [disabled]="modalLoading()"
-            (keydown.enter)="submitModal()"
-          />
-        </div>
+          @if (modalError()) {
+            <div class="modal-error">{{ modalError() }}</div>
+          }
+          @if (modalSuccess()) {
+            <div class="modal-success">{{ modalSuccess() }}</div>
+          }
 
-        @if (activeModal() === 'transfer') {
+          <div class="modal-actions">
+            <button class="btn-secondary" (click)="showConfirmation.set(false)" [disabled]="modalLoading()">
+              ← Back
+            </button>
+            <button class="btn-primary" (click)="submitModal()" [disabled]="modalLoading()">
+              @if (modalLoading()) {
+                <span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>
+                Transferring...
+              } @else {
+                Confirm Transfer
+              }
+            </button>
+          </div>
+
+        } @else {
+
+          <!-- ── Normal form ── -->
+          @if (account()) {
+            <div class="modal-account-info">
+              <span class="modal-account-info__label">From account</span>
+              <span class="modal-account-info__value">{{ account()!.accountName }} &mdash; {{ formatBalance(account()!.balance, account()!.currency) }}</span>
+            </div>
+          }
+
           <div class="form-field">
-            <label for="targetAccount">Target Account</label>
-            <select
-              id="targetAccount"
-              [value]="modalTargetAccountId()"
-              (change)="modalTargetAccountId.set($any($event.target).value)"
+            <label for="modalAmount">Amount ({{ account()?.currency }})</label>
+            <input
+              id="modalAmount"
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="0.00"
+              [value]="modalAmount()"
+              (input)="modalAmount.set($any($event.target).value)"
+              [disabled]="modalLoading()"
+              (keydown.enter)="submitModal()"
+            />
+          </div>
+
+          @if (activeModal() === 'transfer') {
+            <div class="form-field">
+              <label for="targetAccount">Target Account</label>
+              <select
+                id="targetAccount"
+                [value]="modalTargetAccountId()"
+                (change)="onTargetAccountChange($any($event.target).value)"
+                [disabled]="modalLoading()"
+              >
+                @for (acc of otherAccounts(); track acc.id) {
+                  <option [value]="acc.id">{{ acc.accountName }} ({{ acc.currency }})</option>
+                }
+              </select>
+            </div>
+
+            <!-- Exchange rate preview -->
+            @if (exchangeRateLoading()) {
+              <div class="rate-preview rate-preview--loading">
+                <span class="spinner" style="width:14px;height:14px;border-width:2px;"></span>
+                Fetching exchange rate...
+              </div>
+            } @else if (exchangeRate() !== null && selectedTargetAccount()) {
+              <div class="rate-preview">
+                <div class="rate-preview__rate">
+                  <span class="rate-preview__label">Exchange rate</span>
+                  <span class="rate-preview__value">
+                    1 {{ account()?.currency }} = <strong>{{ exchangeRate() }}</strong> {{ selectedTargetAccount()!.currency }}
+                  </span>
+                </div>
+                @if (receivedAmount() !== null) {
+                  <div class="rate-preview__conversion">
+                    <span class="rate-preview__label">Recipient receives</span>
+                    <span class="rate-preview__receive">
+                      {{ selectedTargetAccount()!.currency }} {{ receivedAmount()!.toFixed(2) }}
+                    </span>
+                  </div>
+                }
+              </div>
+            }
+          }
+
+          <div class="form-field">
+            <label for="modalDescription">Description <span class="field-optional">(optional)</span></label>
+            <textarea
+              id="modalDescription"
+              rows="2"
+              placeholder="Add a note for this transaction..."
+              [value]="modalDescription()"
+              (input)="modalDescription.set($any($event.target).value)"
+              [disabled]="modalLoading()"
+            ></textarea>
+          </div>
+
+          @if (modalError()) {
+            <div class="modal-error">{{ modalError() }}</div>
+          }
+          @if (modalSuccess()) {
+            <div class="modal-success">{{ modalSuccess() }}</div>
+          }
+
+          <div class="modal-actions">
+            <button class="btn-secondary" (click)="closeModal()" [disabled]="modalLoading()">
+              Cancel
+            </button>
+            <button
+              class="btn-primary"
+              (click)="submitModal()"
               [disabled]="modalLoading()"
             >
-              @for (acc of otherAccounts(); track acc.id) {
-                <option [value]="acc.id">{{ acc.accountName }} ({{ acc.currency }})</option>
+              @if (modalLoading()) {
+                <span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>
+                Processing...
+              } @else if (activeModal() === 'deposit') {
+                Deposit
+              } @else if (activeModal() === 'withdraw') {
+                Withdraw
+              } @else {
+                Review Transfer →
               }
-            </select>
+            </button>
           </div>
-        }
 
-        @if (modalError()) {
-          <div class="modal-error">{{ modalError() }}</div>
         }
-
-        @if (modalSuccess()) {
-          <div class="modal-success">{{ modalSuccess() }}</div>
-        }
-
-        <div class="modal-actions">
-          <button class="btn-secondary" (click)="closeModal()" [disabled]="modalLoading()">
-            Cancel
-          </button>
-          <button
-            class="btn-primary"
-            [class.btn-danger]="activeModal() === 'withdraw'"
-            (click)="submitModal()"
-            [disabled]="modalLoading()"
-          >
-            @if (modalLoading()) {
-              <span class="spinner" style="width:16px;height:16px;border-width:2px;"></span>
-              Processing...
-            } @else if (activeModal() === 'deposit') {
-              Deposit
-            } @else if (activeModal() === 'withdraw') {
-              Withdraw
-            } @else {
-              Transfer
-            }
-          </button>
-        </div>
       </div>
     </div>
   </div>

@@ -350,7 +350,8 @@ button {
   }
 
   input,
-  select {
+  select,
+  textarea {
     width: 100%;
     padding: 11px 14px;
     border: 1.5px solid var(--border);
@@ -360,6 +361,7 @@ button {
     font-size: 0.95rem;
     transition: border-color var(--transition), box-shadow var(--transition);
     outline: none;
+    resize: vertical;
 
     &:focus {
       border-color: var(--primary);
@@ -369,6 +371,12 @@ button {
     &::placeholder {
       color: var(--text-muted);
     }
+  }
+
+  .field-optional {
+    font-weight: 400;
+    font-size: 0.78rem;
+    color: var(--text-muted);
   }
 
   select {

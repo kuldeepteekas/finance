@@ -1,7 +1,7 @@
 import { inject } from '@angular/core';
 import { Actions, createEffect, ofType } from '@ngrx/effects';
 import { of } from 'rxjs';
-import { catchError, map, switchMap } from 'rxjs/operators';
+import { catchError, map, switchMap, exhaustMap } from 'rxjs/operators';
 import { AccountApiService } from '../../core/services/account-api.service';
 import {
   loadTransactions,
@@ -38,7 +38,7 @@ export class TransactionsEffects {
   loadMoreTransactions$ = createEffect(() =>
     this.actions$.pipe(
       ofType(loadMoreTransactions),
-      switchMap(({ accountId, cursor }) =>
+      exhaustMap(({ accountId, cursor }) =>
         this.accountApiService.getTransactions(accountId, cursor, 5).pipe(
           map((response) =>
             loadMoreTransactionsSuccess({

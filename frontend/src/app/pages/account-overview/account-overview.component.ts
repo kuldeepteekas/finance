@@ -37,7 +37,7 @@ import {
   selectTransactionsLoadingMore,
   selectTransactionCursor
 } from '../../store/transactions/transactions.selectors';
-import { TransactionResponse, AccountResponse } from '../../core/models/account.model';
+import { TransactionResponse, AccountResponse, ExchangeRateResponse } from '../../core/models/account.model';
 import { AccountApiService } from '../../core/services/account-api.service';
 
 Chart.register(LineController, LineElement, PointElement, LinearScale, CategoryScale, Filler, Tooltip);
@@ -82,9 +82,23 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   activeModal = signal<ModalType>(null);
   modalAmount = signal('');
   modalTargetAccountId = signal('');
+  modalDescription = signal('');
   modalLoading = signal(false);
   modalError = signal<string | null>(null);
   modalSuccess = signal<string | null>(null);
+
+  // Transfer — exchange rate preview & confirmation
+  exchangeRate = signal<number | null>(null);
+  exchangeRateLoading = signal(false);
+  showConfirmation = signal(false);
+  selectedTargetAccount = signal<AccountResponse | null>(null);
+
+  readonly receivedAmount = computed<number | null>(() => {
+    const amount = parseFloat(this.modalAmount());
+    const rate = this.exchangeRate();
+    if (!amount || isNaN(amount) || amount <= 0 || !rate) return null;
+    return parseFloat((amount * rate).toFixed(4));
+  });
 
   constructor() {
     effect(() => {
@@ -117,14 +131,54 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
   openModal(type: ModalType): void {
     this.activeModal.set(type);
     this.modalAmount.set('');
-    this.modalTargetAccountId.set(this.otherAccounts()[0]?.id ?? '');
+    this.modalDescription.set('');
     this.modalError.set(null);
     this.modalSuccess.set(null);
     this.modalLoading.set(false);
+    this.showConfirmation.set(false);
+    this.exchangeRate.set(null);
+    this.selectedTargetAccount.set(null);
+
+    const firstOther = this.otherAccounts()[0];
+    this.modalTargetAccountId.set(firstOther?.id ?? '');
+    if (type === 'transfer' && firstOther) {
+      this.selectedTargetAccount.set(firstOther);
+      this.fetchExchangeRate();
+    }
   }
 
   closeModal(): void {
     this.activeModal.set(null);
+    this.showConfirmation.set(false);
+  }
+
+  onTargetAccountChange(accountId: string): void {
+    this.modalTargetAccountId.set(accountId);
+    this.exchangeRate.set(null);
+    const acc = this.otherAccounts().find(a => a.id === accountId) ?? null;
+    this.selectedTargetAccount.set(acc);
+    this.fetchExchangeRate();
+  }
+
+  private fetchExchangeRate(): void {
+    const fromCurrency = this.account()?.currency;
+    const target = this.selectedTargetAccount();
+    if (!fromCurrency || !target || fromCurrency === target.currency) return;
+
+    this.exchangeRateLoading.set(true);
+    this.accountApi.getExchangeRates(fromCurrency, target.currency).subscribe({
+      next: (result) => {
+        const rate = Array.isArray(result)
+          ? (result[0] as ExchangeRateResponse)?.rate
+          : (result as ExchangeRateResponse).rate;
+        this.exchangeRate.set(rate ?? null);
+        this.exchangeRateLoading.set(false);
+      },
+      error: () => {
+        this.exchangeRate.set(null);
+        this.exchangeRateLoading.set(false);
+      }
+    });
   }
 
   submitModal(): void {
@@ -141,22 +195,31 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
       return;
     }
 
+    // Transfer requires confirmation step first
+    if (type === 'transfer' && !this.showConfirmation()) {
+      this.modalError.set(null);
+      this.showConfirmation.set(true);
+      return;
+    }
+
     this.modalError.set(null);
     this.modalLoading.set(true);
 
     const idempotencyKey = crypto.randomUUID();
+    const description = this.modalDescription().trim() || undefined;
     let call$;
 
     if (type === 'deposit') {
-      call$ = this.accountApi.deposit(this.accountId, amount, idempotencyKey);
+      call$ = this.accountApi.deposit(this.accountId, amount, idempotencyKey, description);
     } else if (type === 'withdraw') {
-      call$ = this.accountApi.withdraw(this.accountId, amount, idempotencyKey);
+      call$ = this.accountApi.withdraw(this.accountId, amount, idempotencyKey, description);
     } else {
       call$ = this.accountApi.exchange(
         this.accountId,
         this.modalTargetAccountId(),
         amount,
-        idempotencyKey
+        idempotencyKey,
+        description
       );
     }
 
@@ -164,16 +227,16 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
       next: () => {
         this.modalLoading.set(false);
         this.modalSuccess.set('Transaction completed successfully!');
-        // Refresh account balance + transaction list
         this.store.dispatch(loadAccount({ id: this.accountId }));
         this.store.dispatch(loadTransactions({ accountId: this.accountId }));
         setTimeout(() => this.closeModal(), 1200);
       },
       error: (err) => {
         this.modalLoading.set(false);
+        this.showConfirmation.set(false);
         const msg =
-          err?.error?.message ||
-          err?.error?.error ||
+          err?.error?.error?.message ||   // { error: { error: { message } } }
+          err?.error?.message ||           // { error: { message } }
           err?.message ||
           'Operation failed. Please try again.';
         this.modalError.set(msg);
@@ -246,6 +309,7 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
             grid: { color: 'rgba(0, 0, 0, 0.06)' }
           },
           y: {
+            min: 0,
             ticks: {
               color: 'rgba(26, 26, 46, 0.5)',
               font: { size: 11 },
@@ -266,6 +330,15 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
     }
   }
 
+  private niceStep(maxVal: number): number {
+    if (maxVal <= 0) return 1;
+    const rawStep = maxVal / 5;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(rawStep)));
+    const norm = rawStep / magnitude;
+    const nice = norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10;
+    return nice * magnitude;
+  }
+
   private updateChart(transactions: TransactionResponse[]): void {
     if (!this.chart) return;
     const sorted = [...transactions].sort(
@@ -273,6 +346,19 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
     );
     this.chart.data.labels = sorted.map((tx) => this.formatDateShort(tx.createdAt));
     this.chart.data.datasets[0].data = sorted.map((tx) => tx.balanceAfter);
+
+    const maxBalance = Math.max(...sorted.map(tx => tx.balanceAfter), 0);
+    const step = this.niceStep(maxBalance);
+    const niceMax = Math.ceil(maxBalance / step) * step;
+
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const yScale = this.chart.options.scales?.['y'] as any;
+    if (yScale) {
+      yScale.min = 0;
+      yScale.max = niceMax;
+      yScale.ticks.stepSize = step;
+    }
+
     this.chart.update();
   }
 
@@ -290,7 +376,7 @@ export class AccountOverviewComponent implements OnInit, AfterViewInit, OnDestro
           }
         }
       },
-      { threshold: 0.1 }
+      { threshold: 0 }
     );
     this.observer.observe(this.sentinel.nativeElement);
   }

@@ -344,3 +344,132 @@
     color: var(--text);
   }
 }
+
+/* ── Exchange rate preview ────────────────────────────────── */
+.rate-preview {
+  background: rgba(255, 107, 53, 0.05);
+  border: 1px solid rgba(255, 107, 53, 0.2);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+
+  &--loading {
+    background: var(--bg);
+    border-color: var(--border);
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    color: var(--text-muted);
+    font-size: 0.85rem;
+  }
+
+  &__rate,
+  &__conversion {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  &__label {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    font-weight: 500;
+  }
+
+  &__value {
+    font-size: 0.88rem;
+    color: var(--text);
+
+    strong {
+      color: var(--primary);
+      font-weight: 700;
+    }
+  }
+
+  &__receive {
+    font-size: 1rem;
+    font-weight: 800;
+    color: var(--success);
+    letter-spacing: -0.3px;
+  }
+}
+
+/* ── Transfer confirmation summary ───────────────────────── */
+.confirm-summary {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+
+  &__icon {
+    text-align: center;
+    font-size: 1.6rem;
+    color: var(--info);
+    margin-bottom: 4px;
+  }
+
+  &__row {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+
+    &:last-of-type {
+      border-bottom: none;
+      padding-bottom: 0;
+    }
+  }
+
+  &__label {
+    font-size: 0.8rem;
+    color: var(--text-muted);
+    font-weight: 500;
+    white-space: nowrap;
+  }
+
+  &__value {
+    font-size: 0.9rem;
+    font-weight: 600;
+    color: var(--text);
+    text-align: right;
+
+    &--send {
+      color: var(--danger);
+    }
+
+    &--receive {
+      color: var(--success);
+      font-size: 1rem;
+      font-weight: 800;
+    }
+
+    &--rate {
+      color: var(--primary);
+      font-size: 0.82rem;
+      font-weight: 500;
+    }
+  }
+
+  &__question {
+    text-align: center;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--text);
+    padding-top: 4px;
+    margin-top: 4px;
+  }
+}
+
+.field-optional {
+  font-weight: 400;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
