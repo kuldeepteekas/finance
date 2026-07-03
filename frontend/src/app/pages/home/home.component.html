@@ -1,0 +1,57 @@
+<app-navbar />
+
+<div class="page-container home-page">
+  <div class="home-header">
+    <h1 class="home-header__title">
+      <span class="gradient-text">My Accounts</span>
+    </h1>
+    <p class="home-header__subtitle">Manage and monitor all your accounts</p>
+  </div>
+
+  @if (loading()) {
+    <div class="accounts-grid">
+      @for (item of skeletonItems; track $index) {
+        <div class="account-card account-card--skeleton card">
+          <div class="skeleton skeleton-title"></div>
+          <div class="skeleton skeleton-balance"></div>
+          <div class="skeleton skeleton-badge"></div>
+        </div>
+      }
+    </div>
+  } @else if (error()) {
+    <div class="empty-state card">
+      <div class="empty-state__icon">&#9888;</div>
+      <h3 class="empty-state__title">Failed to load accounts</h3>
+      <p class="empty-state__text">{{ error() }}</p>
+    </div>
+  } @else if (accounts().length === 0) {
+    <div class="empty-state card">
+      <div class="empty-state__icon">&#128179;</div>
+      <h3 class="empty-state__title">No accounts found</h3>
+      <p class="empty-state__text">You don't have any accounts yet.</p>
+    </div>
+  } @else {
+    <div class="accounts-grid">
+      @for (account of accounts(); track account.id) {
+        <div class="account-card card" (click)="navigateToAccount(account)" role="button" tabindex="0"
+          (keydown.enter)="navigateToAccount(account)">
+          <div class="account-card__top">
+            <div class="account-card__currency-icon">
+              {{ account.currency }}
+            </div>
+            <span class="badge" [class]="getStatusClass(account.status)">
+              {{ account.status }}
+            </span>
+          </div>
+          <div class="account-card__name">{{ account.accountName }}</div>
+          <div class="account-card__balance">
+            {{ formatBalance(account.balance, account.currency) }}
+          </div>
+          <div class="account-card__footer">
+            <span class="account-card__view">View details →</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+</div>

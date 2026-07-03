@@ -1,0 +1,158 @@
+<app-navbar />
+
+<div class="page-container tx-page">
+  <div class="tx-page__actions">
+    <button class="btn-secondary back-btn" (click)="goBack()">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+        <polyline points="15 18 9 12 15 6"/>
+      </svg>
+      Back to Account
+    </button>
+
+    @if (transaction()) {
+      <button class="btn-primary export-btn" (click)="exportPDF()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/>
+          <line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Export PDF
+      </button>
+    }
+  </div>
+
+  @if (!transaction()) {
+    <div class="not-found card">
+      <div class="not-found__icon">&#9888;</div>
+      <h2 class="not-found__title">Transaction not found</h2>
+      <p class="not-found__text">The transaction data is no longer available. Please go back and select a transaction.</p>
+      <button class="btn-primary" (click)="goBack()" style="margin-top: 20px;">
+        Go Back
+      </button>
+    </div>
+  } @else {
+    <div class="tx-detail">
+      <div class="tx-detail__header card">
+        <div class="tx-detail__header-left">
+          <span class="badge tx-type-badge" [class]="getTypeClass(transaction()!.type)">
+            {{ transaction()!.type.replace('_', ' ') }}
+          </span>
+          <div class="tx-detail__amount"
+            [class.tx-detail__amount--credit]="isCredit(transaction()!)"
+            [class.tx-detail__amount--debit]="!isCredit(transaction()!)">
+            {{ isCredit(transaction()!) ? '+' : '-' }}{{ formatAmount(transaction()!.amount, transaction()!.currency) }}
+          </div>
+        </div>
+        <div class="tx-detail__header-right">
+          <span class="badge"
+            [class.badge-success]="transaction()!.status === 'SUCCESS'"
+            [class.badge-danger]="transaction()!.status === 'FAILED'">
+            {{ transaction()!.status }}
+          </span>
+          <div class="tx-detail__date">{{ formatDate(transaction()!.createdAt) }}</div>
+        </div>
+      </div>
+
+      <div class="tx-fields card">
+        <h2 class="tx-fields__title">Transaction Details</h2>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Transaction ID</span>
+          <span class="tx-field__value tx-field__value--mono">{{ transaction()!.id }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Account ID</span>
+          <span class="tx-field__value tx-field__value--mono">{{ transaction()!.accountId }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Type</span>
+          <span class="tx-field__value">
+            <span class="badge" [class]="getTypeClass(transaction()!.type)">
+              {{ transaction()!.type.replace('_', ' ') }}
+            </span>
+          </span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Status</span>
+          <span class="tx-field__value">
+            <span class="badge"
+              [class.badge-success]="transaction()!.status === 'SUCCESS'"
+              [class.badge-danger]="transaction()!.status === 'FAILED'">
+              {{ transaction()!.status }}
+            </span>
+          </span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Amount</span>
+          <span class="tx-field__value tx-field__value--highlight"
+            [class.tx-field__value--credit]="isCredit(transaction()!)"
+            [class.tx-field__value--debit]="!isCredit(transaction()!)">
+            {{ formatAmount(transaction()!.amount, transaction()!.currency) }}
+          </span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Currency</span>
+          <span class="tx-field__value">{{ transaction()!.currency }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Balance Before</span>
+          <span class="tx-field__value">{{ formatAmount(transaction()!.balanceBefore, transaction()!.currency) }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Balance After</span>
+          <span class="tx-field__value tx-field__value--highlight">
+            {{ formatAmount(transaction()!.balanceAfter, transaction()!.currency) }}
+          </span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Description</span>
+          <span class="tx-field__value" [class.tx-field__value--muted]="!transaction()!.description">
+            {{ transaction()!.description || 'N/A' }}
+          </span>
+        </div>
+
+        @if (transaction()!.failureReason) {
+          <div class="tx-field">
+            <span class="tx-field__label">Failure Reason</span>
+            <span class="tx-field__value tx-field__value--danger">{{ transaction()!.failureReason }}</span>
+          </div>
+        }
+
+        <div class="tx-field">
+          <span class="tx-field__label">Correlation ID</span>
+          <span class="tx-field__value tx-field__value--mono">{{ transaction()!.correlationId }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Idempotency Key</span>
+          <span class="tx-field__value tx-field__value--mono">{{ transaction()!.idempotencyKey }}</span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">External Call Status</span>
+          <span class="tx-field__value">
+            <span class="badge"
+              [class.badge-success]="transaction()!.externalCallStatus === 'SUCCESS'"
+              [class.badge-danger]="transaction()!.externalCallStatus === 'FAILED'"
+              [class.badge-info]="transaction()!.externalCallStatus === 'SKIPPED'">
+              {{ transaction()!.externalCallStatus }}
+            </span>
+          </span>
+        </div>
+
+        <div class="tx-field">
+          <span class="tx-field__label">Date</span>
+          <span class="tx-field__value">{{ formatDate(transaction()!.createdAt) }}</span>
+        </div>
+      </div>
+    </div>
+  }
+</div>

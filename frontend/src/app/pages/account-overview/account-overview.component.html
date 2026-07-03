@@ -1,0 +1,107 @@
+<app-navbar />
+
+<div class="page-container account-page">
+  <!-- Back Button -->
+  <button class="back-btn btn-secondary" (click)="goBack()">
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+      <polyline points="15 18 9 12 15 6"/>
+    </svg>
+    Back to Accounts
+  </button>
+
+  @if (accountLoading() && !account()) {
+    <div class="account-header card skeleton-header">
+      <div class="skeleton skeleton-title" style="height:28px; width:40%; margin-bottom:12px;"></div>
+      <div class="skeleton skeleton-balance" style="height:40px; width:55%; margin-bottom:16px;"></div>
+      <div class="skeleton" style="height:24px; width:20%; border-radius:20px;"></div>
+    </div>
+  } @else if (account()) {
+    <!-- Account Header -->
+    <div class="account-header card">
+      <div class="account-header__left">
+        <div class="account-header__currency">{{ account()!.currency }}</div>
+        <div>
+          <h1 class="account-header__name">{{ account()!.accountName }}</h1>
+          <div class="account-header__balance">
+            {{ formatBalance(account()!.balance, account()!.currency) }}
+          </div>
+        </div>
+      </div>
+      <div class="account-header__right">
+        <span class="badge" [class]="getStatusClass(account()!.status)">
+          {{ account()!.status }}
+        </span>
+        <div class="account-header__id">ID: {{ account()!.id }}</div>
+      </div>
+    </div>
+  }
+
+  <!-- Balance Chart -->
+  <div class="chart-card card">
+    <h2 class="section-title">Balance History</h2>
+    @if (transactions().length === 0 && loading()) {
+      <div class="chart-loading">
+        <span class="spinner spinner-lg"></span>
+      </div>
+    } @else if (transactions().length === 0 && !loading()) {
+      <div class="chart-empty">No transaction data to display</div>
+    } @else {
+      <div class="chart-wrapper">
+        <canvas #balanceChart></canvas>
+      </div>
+    }
+  </div>
+
+  <!-- Transactions List -->
+  <div class="transactions-section">
+    <h2 class="section-title">Transactions</h2>
+
+    @if (loading()) {
+      <div class="loading-center">
+        <span class="spinner spinner-lg"></span>
+      </div>
+    } @else if (transactions().length === 0) {
+      <div class="empty-state card">
+        <div class="empty-state__icon">&#128196;</div>
+        <h3 class="empty-state__title">No transactions</h3>
+        <p class="empty-state__text">No transactions found for this account.</p>
+      </div>
+    } @else {
+      <div class="transactions-list card">
+        @for (tx of transactions(); track tx.id) {
+          <div class="tx-row" (click)="onTransactionClick(tx)" role="button" tabindex="0"
+            (keydown.enter)="onTransactionClick(tx)">
+            <div class="tx-row__left">
+              <div class="tx-row__date">{{ formatDate(tx.createdAt) }}</div>
+              <span class="badge tx-row__type" [class]="getTypeClass(tx.type)">
+                {{ tx.type.replace('_', ' ') }}
+              </span>
+            </div>
+            <div class="tx-row__right">
+              <div class="tx-row__amount" [class.tx-row__amount--credit]="isCredit(tx)"
+                [class.tx-row__amount--debit]="!isCredit(tx)">
+                {{ formatAmount(tx) }}
+              </div>
+              <span class="badge tx-row__status"
+                [class.badge-success]="tx.status === 'SUCCESS'"
+                [class.badge-danger]="tx.status === 'FAILED'">
+                {{ tx.status }}
+              </span>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Loading More Spinner -->
+      @if (loadingMore()) {
+        <div class="loading-more">
+          <span class="spinner"></span>
+          <span class="loading-more__text">Loading more...</span>
+        </div>
+      }
+
+      <!-- Infinite Scroll Sentinel -->
+      <div #sentinel class="sentinel"></div>
+    }
+  </div>
+</div>

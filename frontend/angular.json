@@ -25,6 +25,7 @@
             ],
             "tsConfig": "tsconfig.app.json",
             "inlineStyleLanguage": "scss",
+            "allowedCommonJsDependencies": ["jspdf", "html2canvas", "canvg", "core-js"],
             "assets": [
               {
                 "glob": "**/*",
@@ -98,5 +99,8 @@
         }
       }
     }
+  },
+  "cli": {
+    "analytics": false
   }
 }

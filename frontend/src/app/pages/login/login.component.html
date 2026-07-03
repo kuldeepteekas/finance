@@ -1,0 +1,69 @@
+<div class="login-page">
+  <div class="login-card card">
+    <div class="login-card__header">
+      <div class="login-card__logo">
+        <span class="logo-icon">&#9679;</span>
+      </div>
+      <h1 class="login-card__title">FinanceApp</h1>
+      <p class="login-card__subtitle">Sign in to your account</p>
+    </div>
+
+    <form class="login-form" [formGroup]="loginForm" (ngSubmit)="onSubmit()">
+      <div class="form-group">
+        <label class="form-label" for="username">Username</label>
+        <input
+          id="username"
+          class="form-input"
+          [class.form-input--error]="usernameControl?.invalid && usernameControl?.touched"
+          type="text"
+          formControlName="username"
+          placeholder="Enter your username"
+          autocomplete="username"
+        />
+        @if (usernameControl?.invalid && usernameControl?.touched) {
+          <span class="form-error">Username is required</span>
+        }
+      </div>
+
+      <div class="form-group">
+        <label class="form-label" for="password">Password</label>
+        <input
+          id="password"
+          class="form-input"
+          [class.form-input--error]="passwordControl?.invalid && passwordControl?.touched"
+          type="password"
+          formControlName="password"
+          placeholder="Enter your password"
+          autocomplete="current-password"
+        />
+        @if (passwordControl?.invalid && passwordControl?.touched) {
+          <span class="form-error">Password is required</span>
+        }
+      </div>
+
+      @if (error()) {
+        <div class="login-error">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="12" y1="8" x2="12" y2="12"/>
+            <line x1="12" y1="16" x2="12.01" y2="16"/>
+          </svg>
+          {{ error() }}
+        </div>
+      }
+
+      <button
+        type="submit"
+        class="btn-primary login-btn"
+        [disabled]="loading()"
+      >
+        @if (loading()) {
+          <span class="spinner"></span>
+          Signing in...
+        } @else {
+          Sign In
+        }
+      </button>
+    </form>
+  </div>
+</div>
