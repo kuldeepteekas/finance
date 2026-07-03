@@ -12,6 +12,9 @@ import java.util.UUID;
 
 public interface TransactionRepository extends JpaRepository<Transaction, UUID> {
 
+    // Used by the concurrency test cleanup to remove test transactions
+    void deleteByAccount_Id(UUID accountId);
+
     // First page — no cursor, ordered newest first.
     @Query("SELECT t FROM Transaction t " +
            "WHERE t.account.id = :accountId AND t.user.id = :userId " +
